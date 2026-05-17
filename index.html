@@ -504,10 +504,107 @@
         </div>
       </section>
 
+      <!-- MENU 5: INFORMASI AKUN PEGAWAI (BARU) -->
+      <section id="menu-akun" class="flex flex-col gap-6 hidden">
+        <h2 class="text-lg font-bold text-slate-800 text-left">Profil Saya</h2>
+        
+        <!-- Header Profil Utama -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-center text-center gap-4">
+          <div class="relative">
+            <img id="akun-foto" src="" alt="Foto User" class="w-24 h-24 rounded-full object-cover border-4 border-emerald-500 shadow-lg">
+            <div class="absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full p-1.5 border-2 border-white text-xs flex items-center justify-center shadow">
+              <i class="fa-solid fa-shield-verified"></i>
+            </div>
+          </div>
+          <div>
+            <h3 id="akun-nama" class="text-base font-extrabold text-slate-800">-</h3>
+            <p id="akun-nip-text" class="text-xs font-semibold text-slate-500 mt-0.5">NIP. -</p>
+          </div>
+        </div>
+
+        <!-- Detail Hubungan Kerja & Organisasi -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
+          <h4 class="text-xs font-extrabold text-emerald-600 uppercase tracking-wider border-b border-slate-100 pb-2">Informasi Kepegawaian</h4>
+          
+          <!-- Jabatan -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-briefcase"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Jabatan Utama</span>
+              <p id="akun-jabatan" class="text-xs font-extrabold text-slate-700 mt-0.5">-</p>
+            </div>
+          </div>
+
+          <!-- Satuan Kerja -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-building-columns"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Satuan Kerja</span>
+              <p class="text-xs font-extrabold text-slate-700 mt-0.5">Dinas Pendidikan</p>
+            </div>
+          </div>
+
+          <!-- Unit Kerja -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-school"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Unit Kerja</span>
+              <p class="text-xs font-extrabold text-slate-700 mt-0.5">SMA Mifthaussaadah</p>
+            </div>
+          </div>
+
+          <!-- Atasan Langsung -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Atasan Langsung</span>
+              <p class="text-xs font-extrabold text-slate-700 mt-0.5">Dadan Amirulloh, S.Pd.I</p>
+              <p class="text-[10px] font-medium text-slate-500 mt-0.5">Guru Kepala Sekolah SMA Mifthaussaadah</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detail Skema Kerja & Aturan Lokasi -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5 text-left">
+          <h4 class="text-xs font-extrabold text-emerald-600 uppercase tracking-wider border-b border-slate-100 pb-2">Skema & Wilayah Kerja</h4>
+
+          <!-- Skema Kerja -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-calendar-day"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Skema Kerja</span>
+              <p class="text-xs font-extrabold text-slate-700 mt-0.5">5 Hari Kerja (06.30)</p>
+            </div>
+          </div>
+
+          <!-- Lokasi Presensi -->
+          <div class="flex items-start gap-3.5">
+            <div class="w-8 h-8 bg-rose-50 rounded-lg flex items-center justify-center text-rose-600 text-xs shrink-0 mt-0.5">
+              <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div>
+              <span class="text-[10px] font-bold text-slate-400 block uppercase">Lokasi Presensi Diperbolehkan</span>
+              <p class="text-xs font-extrabold text-slate-700 mt-0.5">SMA Mifthaussaadah</p>
+              <p class="text-[10px] font-semibold text-rose-500 mt-0.5"><i class="fa-solid fa-circle-exclamation mr-0.5"></i> Terkunci dalam radius geofence maks. 100 meter</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- NAVIGASI BAWAH (MOBILE STICKY BAR) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-6 py-2.5 z-40 flex items-center justify-around shadow-lg max-w-2xl mx-auto rounded-t-3xl">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-2.5 z-40 flex items-center justify-around shadow-lg max-w-2xl mx-auto rounded-t-3xl">
       <button onclick="switchMenu('beranda')" id="nav-beranda" class="flex flex-col items-center gap-1 text-emerald-600 transition-colors">
         <i class="fa-solid fa-house text-lg"></i>
         <span class="text-[9px] font-bold">Beranda</span>
@@ -524,6 +621,11 @@
         <i class="fa-solid fa-clock-rotate-left text-lg"></i>
         <span class="text-[9px] font-bold">Riwayat</span>
       </button>
+      <!-- TOMBOL NAVIGASI AKUN (BARU) -->
+      <button onclick="switchMenu('akun')" id="nav-akun" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors">
+        <i class="fa-solid fa-user-gear text-lg"></i>
+        <span class="text-[9px] font-bold">Akun</span>
+      </button>
     </nav>
   </div>
 
@@ -535,7 +637,7 @@
     // Tempelkan URL Web App Google Apps Script Anda di bawah ini:
     const SPREADSHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxHPKi82-uZEclC93wsMNpHjI8HmvwnPZ-8czJWs7MECaoKrF_QkLOMkBc9criPnWy4Kw/exec"; 
 
-    const KOORDINAT_SEKOLAH = [-6.3562831731423195, 106.5287926364578]; // SMA Mifthaussaadah (Titik Lock Geofence)
+    const KOORDINAT_SEKOLAH = [-6.3562831731423195.5287926364578]; // SMA Mifthaussaadah (Titik Lock Geofence)
     let userLocation = null; 
     let map = null; 
     let mapMarker = null;
@@ -594,7 +696,7 @@
     function updateRealtimeClock() {
       const sekarang = new Date();
       const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const tanggalString = sekarang.toLocaleDateString('id-ID', optionsTanggal);
+      const tanggalString = ClinicalFormatDate(sekarang, optionsTanggal);
       const jamString = ClinicalFormatTime(sekarang);
 
       const elTanggal = document.getElementById('realtime-tanggal');
@@ -604,6 +706,10 @@
       if (elTanggal) elTanggal.innerText = tanggalString;
       if (elJam) elJam.innerText = jamString;
       if (elLiveTanggal) elLiveTanggal.innerText = tanggalString;
+    }
+
+    function ClinicalFormatDate(date, options) {
+      return date.toLocaleDateString('id-ID', options);
     }
 
     function ClinicalFormatTime(date) {
@@ -620,7 +726,6 @@
       }
 
       try {
-        // Melakukan request GET dengan parameter action=get_users
         const response = await fetch(`${SPREADSHEET_WEB_APP_URL}?action=get_users`);
         const result = await response.json();
         
@@ -678,16 +783,24 @@
 
       if (jarak <= 100) {
         updateGPSStatus("success", `Lokasi Terverifikasi (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
-        btnLonceng.disabled = false;
-        btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
-        helperText.className = "text-[10px] text-emerald-600 mt-4 text-center font-bold";
-        helperText.innerText = "Sinyal GPS Terkunci. Silakan tekan tombol Lonceng untuk presensi.";
+        if (btnLonceng) {
+          btnLonceng.disabled = false;
+          btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
+        }
+        if (helperText) {
+          helperText.className = "text-[10px] text-emerald-600 mt-4 text-center font-bold";
+          helperText.innerText = "Sinyal GPS Terkunci. Silakan tekan tombol Lonceng untuk presensi.";
+        }
       } else {
         updateGPSStatus("outside", `Diluar Jangkauan (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
-        btnLonceng.disabled = true;
-        btnLonceng.className = "w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed";
-        helperText.className = "text-[10px] text-rose-500 mt-4 text-center font-bold";
-        helperText.innerText = `Anda berada diluar jangkauan sekolah. Minimal jarak: 100m. Jarak Anda sekarang: ${Math.round(jarak)}m.`;
+        if (btnLonceng) {
+          btnLonceng.disabled = true;
+          btnLonceng.className = "w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed";
+        }
+        if (helperText) {
+          helperText.className = "text-[10px] text-rose-500 mt-4 text-center font-bold";
+          helperText.innerText = `Anda berada diluar jangkauan sekolah. Minimal jarak: 100m. Jarak Anda sekarang: ${Math.round(jarak)}m.`;
+        }
       }
     }
 
@@ -770,6 +883,7 @@
       modal.classList.remove('hidden');
     }
 
+    // AKSI TUTUP MODAL
     function closeModal() {
       document.getElementById('custom-modal').classList.add('hidden');
     }
@@ -786,6 +900,16 @@
       }
     }
 
+    // RENDERING DATA AKUN (BARU)
+    function renderProfileMenu() {
+      if (!currentUser) return;
+      
+      document.getElementById('akun-foto').src = currentUser.foto;
+      document.getElementById('akun-nama').innerText = currentUser.nama;
+      document.getElementById('akun-nip-text').innerText = "NIP. " + currentUser.nip;
+      document.getElementById('akun-jabatan').innerText = currentUser.jabatan;
+    }
+
     // ==========================================
     // LOGIKA LOGIN DENGAN PENGAMBILAN DATA GURU DARI SPREADSHEET
     // ==========================================
@@ -796,7 +920,6 @@
 
       showLoading(true, "Menghubungkan ke Database Google Sheets...");
 
-      // Tarik database guru terbaru dari Spreadsheet secara langsung saat guru klik Login
       const fetchedGuru = await fetchGuruFromSheets();
       
       showLoading(false);
@@ -805,16 +928,13 @@
       let usingSheets = false;
 
       if (fetchedGuru && Object.keys(fetchedGuru).length > 0) {
-        // Berhasil mendapatkan data dari Google Sheet
         dynamicPegawai = fetchedGuru;
         usingSheets = true;
       } else {
-        // Fallback jika Google Sheets kosong atau gagal diakses
         dynamicPegawai = localFallbackPegawai;
         console.warn("Menggunakan data guru lokal sementara.");
       }
 
-      // Validasi akun guru yang dicari
       if (dynamicPegawai[nip]) {
         targetUser = dynamicPegawai[nip];
         currentUser = targetUser;
@@ -823,6 +943,9 @@
         document.getElementById('p-nama').innerText = currentUser.nama;
         document.getElementById('p-jabatan').innerText = currentUser.jabatan;
         document.getElementById('p-foto').src = currentUser.foto;
+
+        // Render Data Menu Akun Baru
+        renderProfileMenu();
 
         document.getElementById('page-login').classList.add('hidden');
         document.getElementById('main-dashboard').classList.remove('hidden');
@@ -857,23 +980,27 @@
 
     // SWITCH MENU UTAMA
     function switchMenu(targetMenu) {
-      const menus = ['beranda', 'dl', 'izin', 'riwayat'];
+      const menus = ['beranda', 'dl', 'izin', 'riwayat', 'akun'];
       menus.forEach(menu => {
         const section = document.getElementById(`menu-${menu}`);
         const navBtn = document.getElementById(`nav-${menu}`);
         
         if (menu === targetMenu) {
-          section.classList.remove('hidden');
-          navBtn.classList.remove('text-slate-400', 'hover:text-emerald-600');
-          navBtn.classList.add('text-emerald-600');
+          if (section) section.classList.remove('hidden');
+          if (navBtn) {
+            navBtn.classList.remove('text-slate-400', 'hover:text-emerald-600');
+            navBtn.classList.add('text-emerald-600');
+          }
           
           if (menu === 'dl') {
             setTimeout(initLeafletMap, 100);
           }
         } else {
-          section.classList.add('hidden');
-          navBtn.classList.remove('text-emerald-600');
-          navBtn.classList.add('text-slate-400');
+          if (section) section.classList.add('hidden');
+          if (navBtn) {
+            navBtn.classList.remove('text-emerald-600');
+            navBtn.classList.add('text-slate-400');
+          }
         }
       });
       tutupKamera();
