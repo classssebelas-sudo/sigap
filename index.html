@@ -553,7 +553,7 @@
           </div>
         </div>
 
-        <!-- Atasan Langsung -->
+        <!-- Atasan Langsung (Disesuaikan secara dinamis di JS) -->
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
           <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Atasan Langsung</h4>
           <div class="flex items-center gap-3">
@@ -1234,6 +1234,7 @@
         jamSelesaiDl: document.getElementById("dl-jam-selesai").value
       };
 
+      // Memanggil fungsi rill submitPresensi ke Google Sheets Apps Script
       google.script.run
         .withSuccessHandler((response) => {
           setLoader(false);
@@ -1271,7 +1272,7 @@
             return;
           }
 
-          // PERBAIKAN: Membaca NIP secara dinamis dari guru yang sedang login aktif (currentUser.nip)
+          // Membaca NIP secara dinamis dari guru yang sedang login aktif (currentUser.nip)
           const userPres = response.find(p => p && p.nip && String(p.nip).trim() === String(currentUser.nip).trim());
           const btnLonceng = document.getElementById("btn-lonceng");
           const iconLonceng = document.getElementById("icon-lonceng");
@@ -1469,7 +1470,6 @@
     }
 
     // DINAS LUAR (DL): AJUKAN & RENDER DATA
-    // Menampilkan form pengajuan dinas luar
     function bukaFormDL(show) {
       const form = document.getElementById("form-pengajuan-dl");
       if (show) form.classList.remove("hidden");
