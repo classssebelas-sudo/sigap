@@ -21,7 +21,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     .safe-bottom {
-      padding-bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
     }
     /* Animasi Lonceng bergetar */
     @keyframes ring {
@@ -54,6 +54,14 @@
       animation: ring 2s ease infinite;
       transform-origin: 50% 0;
     }
+    /* Sembunyikan scrollbar untuk rincian */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
@@ -62,7 +70,7 @@
   <div id="loading-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
     <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3">
       <div class="animate-spin rounded-full h-10 w-10 border-4 border-emerald-500 border-t-transparent"></div>
-      <p class="text-sm font-semibold text-slate-700">Memproses Data...</p>
+      <p id="loading-text" class="text-sm font-semibold text-slate-700">Memproses Data...</p>
     </div>
   </div>
 
@@ -92,12 +100,12 @@
       
       <form id="form-login" class="w-full flex flex-col gap-5" onsubmit="handleLogin(event)">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">NIP</label>
+          <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">NIP / Username</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
               <i class="fa-solid fa-id-card"></i>
             </span>
-            <input type="text" id="login-nip" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 text-sm transition-all" placeholder="Masukkan NIP Anda">
+            <input type="text" id="login-nip" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 text-sm transition-all" placeholder="Masukkan NIP Anda (ex: 19890101)">
           </div>
         </div>
         <div>
@@ -106,7 +114,7 @@
             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
               <i class="fa-solid fa-lock"></i>
             </span>
-            <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 text-sm transition-all" placeholder="Password (Gunakan NIP)">
+            <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 text-sm transition-all" placeholder="Gunakan NIP Anda sebagai Password">
           </div>
         </div>
         <button type="submit" class="w-full py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all transform active:scale-95">MASUK</button>
@@ -138,7 +146,7 @@
       
       <!-- MENU 1: BERANDA -->
       <section id="menu-beranda" class="flex flex-col gap-6">
-        <!-- Profil Pegawai (Nama dan Jabatan diambil real-time dari Sheet) -->
+        <!-- Profil Pegawai -->
         <div class="bg-gradient-to-br from-emerald-800 to-teal-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden flex items-center gap-5">
           <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
           <img id="p-foto" src="" alt="Foto Pegawai" class="w-20 h-20 rounded-2xl object-cover border-2 border-white/20 shadow-md">
@@ -157,68 +165,35 @@
 
         <!-- Area Presensi Utama -->
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col items-center">
-          <div class="w-full flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 mb-6">
-            <i class="fa-solid fa-location-dot text-rose-500 text-lg animate-bounce"></i>
+          
+          <!-- Indikator GPS Asli (MENGGANTIKAN SPANDUK SIMULASI) -->
+          <div id="gps-status-container" class="w-full flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 transition-all">
+            <i id="gps-status-icon" class="fa-solid fa-location-crosshairs text-amber-500 text-lg animate-spin"></i>
             <div class="text-left flex-1">
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Lokasi Presensi Di-lock</p>
-              <h4 class="text-xs font-bold text-slate-700">SMA Mifthaussaadah (Radius 100m)</h4>
-            </div>
-          </div>
-
-          <!-- Spanduk Peringatan Gagal GPS / Deteksi Lokasi Terbatas -->
-          <div id="location-warning-banner" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
-            <div class="flex items-start gap-2.5">
-              <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg mt-0.5"></i>
-              <div class="flex-1">
-                <p class="text-xs text-amber-800 font-bold">
-                  Akses Geofencing Terbatas / Di-lock 100m
-                </p>
-                <p class="text-[10px] text-amber-700 mt-1 leading-relaxed" id="location-warning-text">
-                  Browser mendeteksi batasan izin lokasi (Permissions Policy). Agar Anda dapat menguji fitur klik tombol lonceng, mengaktifkan kamera, dan melakukan presensi saat ini, silakan aktifkan simulasi lokasi sekolah.
-                </p>
-                <!-- Tombol Aktivasi Simulasi Lokasi agar Lonceng dapat diklik -->
-                <button type="button" onclick="simulasikanLokasiSekolah()" class="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow">
-                  <i class="fa-solid fa-location-crosshairs"></i> Aktifkan Simulasi Lokasi SMA Mifthaussaadah
-                </button>
-              </div>
+              <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Status Geofencing Perangkat</p>
+              <h4 id="gps-status-text" class="text-xs font-bold text-slate-700">Mencari sinyal satelit GPS...</h4>
             </div>
           </div>
 
           <!-- Lonceng Presensi Utama -->
           <div class="relative flex flex-col items-center justify-center py-6">
-            <!-- Tombol Lonceng -->
-            <button id="btn-lonceng" onclick="bukaKameraPresensi()" class="w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95">
-              <i class="fa-solid fa-bell text-5xl bell-ring" id="icon-lonceng"></i>
+            <!-- Tombol Lonceng (Secara default dinonaktifkan sampai lokasi divalidasi) -->
+            <button id="btn-lonceng" disabled onclick="bukaKameraPresensi()" class="w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed">
+              <i class="fa-solid fa-bell text-5xl" id="icon-lonceng"></i>
               <span class="text-xs font-extrabold mt-2 tracking-wide" id="status-lonceng-text">MASUK</span>
             </button>
+            <p id="btn-helper-text" class="text-[10px] text-slate-400 mt-4 text-center font-medium">Dekati lokasi SMA Mifthaussaadah (Radius 100m) untuk mengaktifkan tombol presensi.</p>
           </div>
 
           <!-- Informasi Jam Kerja & Presensi Terkini -->
           <div class="grid grid-cols-2 gap-4 w-full mt-6 pt-6 border-t border-slate-100">
             <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
               <span class="text-[10px] font-bold text-slate-400 uppercase">Jam Masuk (06.30)</span>
-              <!-- Jam Masuk Realtime yang akan muncul setelah presensi sukses -->
               <p id="jam-masuk-realtime" class="text-lg font-bold text-emerald-600 mt-1">--:--</p>
             </div>
             <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
               <span class="text-[10px] font-bold text-slate-400 uppercase">Jam Pulang (15.00)</span>
-              <!-- Jam Pulang Realtime yang akan muncul setelah presensi sukses -->
               <p id="jam-pulang-realtime" class="text-lg font-bold text-rose-600 mt-1">--:--</p>
-            </div>
-          </div>
-
-          <!-- Form Tambahan untuk Izin Dinas Luar khusus yang sedang DL -->
-          <div id="form-dl-presensi" class="w-full mt-5 hidden border-t border-slate-100 pt-5">
-            <h5 class="text-xs font-bold text-slate-600 uppercase mb-3 text-center">Spesifikasi Presensi Dinas Luar</h5>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[10px] font-semibold text-slate-500 mb-1">Jam Datang DL</label>
-                <input type="time" id="dl-jam-datang" class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg">
-              </div>
-              <div>
-                <label class="block text-[10px] font-semibold text-slate-500 mb-1">Jam Selesai DL</label>
-                <input type="time" id="dl-jam-selesai" class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg">
-              </div>
             </div>
           </div>
         </div>
@@ -265,7 +240,6 @@
 
       <!-- MENU 2: DINAS LUAR (DL) -->
       <section id="menu-dl" class="flex flex-col gap-6 hidden">
-        <!-- Header Menu -->
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-bold text-slate-800">Layanan Dinas Luar</h2>
           <button onclick="bukaFormDL(true)" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md hover:bg-emerald-700 transition-all">
@@ -293,14 +267,13 @@
             <div>
               <label class="block text-xs font-bold text-slate-600 mb-1.5">Lokasi Dinas Luar (Peta)</label>
               <div class="flex gap-2 mb-2">
-                <input type="text" id="dl-search-lokasi" class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Ketikkan alamat lengkap lokasi...">
-                <button type="button" onclick="cariLocationsPeta('dl')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
+                <input type="text" id="dl-search-lokasi" class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Ketikkan nama tempat/alamat...">
+                <button type="button" onclick="cariLocationsPeta()" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
               </div>
               <div id="dl-map" class="w-full h-44 rounded-xl border border-slate-200 bg-slate-100 z-10"></div>
-              <p class="text-[10px] text-slate-400 mt-1">Klik di peta untuk menandai titik, lalu klik "Simpan Koordinat".</p>
+              <p class="text-[10px] text-slate-400 mt-1">Klik di peta untuk menandai titik koordinat dinas Anda.</p>
               <div class="flex gap-2 mt-2">
-                <input type="text" id="dl-coords" readonly class="flex-1 p-2 bg-slate-100 border border-slate-200 rounded-lg text-[10px]" placeholder="Koordinat Terpilih">
-                <button type="button" onclick="saveMapLocation('dl')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors">Simpan Koordinat</button>
+                <input type="text" id="dl-coords" readonly required class="flex-1 p-2 bg-slate-100 border border-slate-200 rounded-lg text-[10px]" placeholder="Koordinat Terpilih">
               </div>
             </div>
 
@@ -327,14 +300,14 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Tahun</label>
-              <select id="filter-dl-tahun" onchange="loadDinasLuar()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-dl-tahun" onchange="filterDinasLuar()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="2026">2026</option>
                 <option value="2025">2025</option>
               </select>
             </div>
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Bulan</label>
-              <select id="filter-dl-bulan" onchange="loadDinasLuar()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-dl-bulan" onchange="filterDinasLuar()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="semua">Semua Bulan</option>
                 <option value="1">Januari</option>
                 <option value="2">Februari</option>
@@ -368,7 +341,6 @@
 
       <!-- MENU 3: IZIN PERSONAL (IZIN) -->
       <section id="menu-izin" class="flex flex-col gap-6 hidden">
-        <!-- Header Menu -->
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-bold text-slate-800">Layanan Izin Personal</h2>
           <button onclick="bukaFormIzin(true)" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md hover:bg-emerald-700 transition-all">
@@ -385,9 +357,10 @@
           <form onsubmit="kirimIzinPersonal(event)" class="flex flex-col gap-4">
             <div>
               <label class="block text-xs font-bold text-slate-600 mb-1.5">Jenis Izin</label>
-              <select id="izin-jenis" onchange="toggleIzinTimeInput()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500">
+              <select id="izin-jenis" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500">
                 <option value="Izin Terlambat Masuk">Izin Terlambat Masuk</option>
                 <option value="Izin Pulang Cepat">Izin Pulang Cepat</option>
+                <option value="Sakit dengan Surat Dokter">Sakit dengan Surat Dokter</option>
               </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -396,7 +369,7 @@
                 <input type="date" id="izin-tanggal" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
               </div>
               <div>
-                <label id="lbl-jam-izin" class="block text-xs font-bold text-slate-600 mb-1.5">Jam Tiba Datang</label>
+                <label id="lbl-jam-izin" class="block text-xs font-bold text-slate-600 mb-1.5">Estimasi Jam</label>
                 <input type="time" id="izin-jam" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
               </div>
             </div>
@@ -413,14 +386,14 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Tahun</label>
-              <select id="filter-izin-tahun" onchange="loadIzinPersonal()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-izin-tahun" onchange="filterIzinPersonal()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="2026">2026</option>
                 <option value="2025">2025</option>
               </select>
             </div>
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Bulan</label>
-              <select id="filter-izin-bulan" onchange="loadIzinPersonal()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-izin-bulan" onchange="filterIzinPersonal()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="semua">Semua Bulan</option>
                 <option value="1">Januari</option>
                 <option value="2">Februari</option>
@@ -462,14 +435,14 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Tahun</label>
-              <select id="filter-riwayat-tahun" onchange="loadRekapitulasi()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-riwayat-tahun" onchange="renderRiwayatList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="2026">2026</option>
                 <option value="2025">2025</option>
               </select>
             </div>
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pilih Bulan</label>
-              <select id="filter-riwayat-bulan" onchange="loadRekapitulasi()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+              <select id="filter-riwayat-bulan" onchange="renderRiwayatList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                 <option value="1">Januari</option>
                 <option value="2">Februari</option>
                 <option value="3">Maret</option>
@@ -490,23 +463,23 @@
         <!-- Kolom Rekapitulasi -->
         <div class="grid grid-cols-3 gap-3">
           <div class="bg-slate-800 text-white p-3 rounded-2xl text-center">
-            <span class="text-[9px] font-semibold text-slate-300 uppercase block">Alfa</span>
-            <p id="rekap-alfa" class="text-base font-bold mt-0.5">0 mnt</p>
+            <span class="text-[9px] font-semibold text-slate-300 uppercase block">Hadir</span>
+            <p id="rekap-hadir" class="text-base font-bold mt-0.5">0 hari</p>
           </div>
           <div class="bg-amber-500 text-white p-3 rounded-2xl text-center">
             <span class="text-[9px] font-semibold text-amber-100 uppercase block">Terlambat</span>
             <p id="rekap-telat" class="text-base font-bold mt-0.5">0 mnt</p>
           </div>
           <div class="bg-rose-600 text-white p-3 rounded-2xl text-center">
-            <span class="text-[9px] font-semibold text-rose-100 uppercase block">TAP</span>
-            <p id="rekap-tap" class="text-base font-bold mt-0.5">0 mnt</p>
+            <span class="text-[9px] font-semibold text-rose-100 uppercase block">Alfa</span>
+            <p id="rekap-alfa" class="text-base font-bold mt-0.5">0 hari</p>
           </div>
         </div>
 
         <div class="grid grid-cols-4 gap-2">
           <div class="bg-white border border-slate-100 p-3 rounded-xl text-center shadow-sm">
-            <span class="text-[9px] font-semibold text-slate-400 block">Cuti</span>
-            <p id="rekap-cuti" class="text-sm font-bold text-slate-700 mt-0.5">0</p>
+            <span class="text-[9px] font-semibold text-slate-400 block">Sakit</span>
+            <p id="rekap-sakit" class="text-sm font-bold text-slate-700 mt-0.5">0</p>
           </div>
           <div class="bg-white border border-slate-100 p-3 rounded-xl text-center shadow-sm">
             <span class="text-[9px] font-semibold text-slate-400 block">Izin</span>
@@ -517,8 +490,8 @@
             <p id="rekap-dl" class="text-sm font-bold text-slate-700 mt-0.5">0</p>
           </div>
           <div class="bg-white border border-slate-100 p-3 rounded-xl text-center shadow-sm">
-            <span class="text-[9px] font-semibold text-slate-400 block">WFH</span>
-            <p id="rekap-wfh" class="text-sm font-bold text-slate-700 mt-0.5">0</p>
+            <span class="text-[9px] font-semibold text-slate-400 block">TAP</span>
+            <p id="rekap-tap" class="text-sm font-bold text-slate-700 mt-0.5">0</p>
           </div>
         </div>
 
@@ -526,1329 +499,836 @@
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
           <h3 class="text-xs font-extrabold text-slate-700 uppercase tracking-wide mb-4">Rincian Kehadiran Harian</h3>
           <div id="rincian-harian-list" class="flex flex-col gap-3 max-h-96 overflow-y-auto pr-1">
-            <p class="text-xs text-slate-400 text-center py-6">Memuat rincian harian...</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- MENU 5: AKUN -->
-      <section id="menu-akun" class="flex flex-col gap-6 hidden">
-        <!-- Foto, Nama, & NIP Utama -->
-        <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col items-center text-center">
-          <img id="akun-foto" src="" alt="Foto" class="w-24 h-24 rounded-full object-cover border-4 border-emerald-500/20 shadow-md">
-          <h3 id="akun-nama" class="text-base font-bold text-slate-800 mt-3 leading-tight">-</h3>
-          <p id="akun-nip" class="text-xs text-slate-500 mt-1 font-semibold tracking-wider">-</p>
-        </div>
-
-        <!-- Informasi Jabatan -->
-        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Informasi Jabatan</h4>
-          <div class="flex flex-col gap-2.5 text-xs">
-            <div>
-              <span class="text-slate-400 block">Satuan Kerja</span>
-              <span class="font-bold text-slate-700">Dinas Pendidikan Provinsi Jawa Barat</span>
-            </div>
-            <div>
-              <span class="text-slate-400 block">Unit Kerja</span>
-              <span class="font-bold text-slate-700">SMA Mifthaussaadah</span>
-            </div>
-            <div>
-              <span class="text-slate-400 block">Jabatan Terdaftar</span>
-              <span id="akun-val-jabatan" class="font-bold text-slate-700">Guru Ahli Pertama</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Atasan Langsung (Disesuaikan secara dinamis di JS) -->
-        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Atasan Langsung</h4>
-          <div class="flex items-center gap-3">
-            <div id="atasan-inisial" class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-extrabold">
-              DA
-            </div>
-            <div class="text-xs">
-              <h5 id="atasan-nama" class="font-bold text-slate-700">Dadan Amirulloh, S.Pd.I</h5>
-              <p id="atasan-detail" class="text-slate-400 mt-0.5">Guru Ahli Madya / Kepala Sekolah SMA Mifthaussaadah</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Alamat Tempat Tinggal Map Search -->
-        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Alamat Tempat Tinggal</h4>
-          <div class="flex gap-2">
-            <input type="text" id="akun-search-alamat" class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Cari alamat lengkap tempat tinggal...">
-            <button onclick="cariLocationsPeta('akun')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
-          </div>
-          <div id="akun-map" class="w-full h-44 rounded-xl border border-slate-200 bg-slate-100 z-10"></div>
-          <div class="flex gap-2 mt-1">
-            <input type="text" id="akun-coords" readonly class="flex-1 p-2 bg-slate-100 border border-slate-200 rounded-lg text-[10px]" placeholder="Koordinat Alamat">
-            <button onclick="saveAlamatKeAkun()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors">Save Alamat</button>
-          </div>
-        </div>
-
-        <!-- Info Tambahan Akun -->
-        <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Ketentuan Kerja & Presensi</h4>
-          <div class="flex flex-col gap-2 text-xs">
-            <div class="flex justify-between items-center py-1">
-              <span class="text-slate-400">Skema Kerja</span>
-              <span class="font-bold text-slate-700">5 Hari Kerja (Mulai 06:30 WIB)</span>
-            </div>
-            <div class="flex justify-between items-center py-1 border-t border-slate-50">
-              <span class="text-slate-400">Radius Absen</span>
-              <span class="font-bold text-slate-700">Maksimal 100 Meter</span>
-            </div>
-            <div class="flex justify-between items-center py-1 border-t border-slate-50">
-              <span class="text-slate-400">Titik Pusat Presensi</span>
-              <span class="font-bold text-emerald-600">SMA Mifthaussaadah</span>
-            </div>
+            <!-- List Terisi Dinamis -->
           </div>
         </div>
       </section>
 
     </main>
 
-    <!-- NAVIGATION BAR BAWAH -->
-    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 py-2 px-4 shadow-lg flex justify-around items-center z-40 max-w-2xl mx-auto">
-      <button onclick="switchMenu('beranda')" id="nav-beranda" class="flex flex-col items-center gap-1 text-emerald-600 font-bold">
-        <i class="fa-solid fa-house-chimney text-lg"></i>
-        <span class="text-[9px]">Beranda</span>
+    <!-- NAVIGASI BAWAH (MOBILE STICKY BAR) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-6 py-2.5 z-40 flex items-center justify-around shadow-lg max-w-2xl mx-auto rounded-t-3xl">
+      <button onclick="switchMenu('beranda')" id="nav-beranda" class="flex flex-col items-center gap-1 text-emerald-600 transition-colors">
+        <i class="fa-solid fa-house text-lg"></i>
+        <span class="text-[9px] font-bold">Beranda</span>
       </button>
-      <button onclick="switchMenu('dl')" id="nav-dl" class="flex flex-col items-center gap-1 text-slate-400">
+      <button onclick="switchMenu('dl')" id="nav-dl" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors">
         <i class="fa-solid fa-briefcase text-lg"></i>
-        <span class="text-[9px]">Dinas Luar</span>
+        <span class="text-[9px] font-bold">Dinas Luar</span>
       </button>
-      <button onclick="switchMenu('izin')" id="nav-izin" class="flex flex-col items-center gap-1 text-slate-400">
+      <button onclick="switchMenu('izin')" id="nav-izin" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors">
         <i class="fa-solid fa-file-signature text-lg"></i>
-        <span class="text-[9px]">Izin</span>
+        <span class="text-[9px] font-bold">Izin</span>
       </button>
-      <button onclick="switchMenu('riwayat')" id="nav-riwayat" class="flex flex-col items-center gap-1 text-slate-400">
+      <button onclick="switchMenu('riwayat')" id="nav-riwayat" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors">
         <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-        <span class="text-[9px]">Riwayat</span>
-      </button>
-      <button onclick="switchMenu('akun')" id="nav-akun" class="flex flex-col items-center gap-1 text-slate-400">
-        <i class="fa-solid fa-circle-user text-lg"></i>
-        <span class="text-[9px]">Akun</span>
+        <span class="text-[9px] font-bold">Riwayat</span>
       </button>
     </nav>
   </div>
 
-  <!-- SCRIPT LOGIKA APLIKASI -->
+  <!-- JAVASCRIPT UTAMA & LOGIKA REAL GPS DAN DATABASE -->
   <script>
-    // Konfigurasi Kunci Geofencing
-    const TARGET_LAT = 106.5287926364578; 
-    const TARGET_LNG = 106.5287926364578;
-    const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
-
-    // Daftar Hari Libur Nasional / Tanggal Merah (Contoh)
-    const TANGGAL_MERAH = [
-      "2026-01-01", // Tahun Baru
-      "2026-05-01", // Hari Buruh
-      "2026-05-25", // Hari Raya Idul Adha
-      "2026-08-17", // Hari Kemerdekaan
-      "2026-12-25"  // Hari Natal
-    ];
-
-    // State dinamis untuk penyimpanan lokal (ketika berjalan di simulator Canvas)
-    let localLivePresensiList = [];
-    let localRincianPresensiMap = {};
-
-    // Helper untuk membuat tanggal berformat WIB (Jakarta) secara presisi dan kebal zona waktu mesin lokal
-    function getWIBDateString() {
-      const sekarang = new Date();
-      const utc = sekarang.getTime() + (sekarang.getTimezoneOffset() * 60000);
-      const wibDate = new Date(utc + (3600000 * 7)); // Tambah 7 jam untuk WIB
-      const yyyy = wibDate.getFullYear();
-      const mm = String(wibDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(wibDate.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-
     // ==========================================
-    // LAPISAN PENGAMAN PASIF (SILENT POLYFILL)
+    // UTAMA: KONFIGURASI GOOGLE SPREADSHEET (API)
     // ==========================================
-    if (typeof google === 'undefined' || !google.script) {
-      window.google = {
-        script: {
-          run: {
-            _successHandler: null,
-            _failureHandler: null,
-            withSuccessHandler: function(handler) {
-              this._successHandler = handler;
-              return this;
-            },
-            withFailureHandler: function(handler) {
-              this._failureHandler = handler;
-              return this;
-            },
-            loginUser: function(nip, password) {
-              // Menghubungi spreadsheet rill secara langsung via Google Visualization API (gviz)
-              const sheetUrl = "https://docs.google.com/spreadsheets/d/1vFXwQAEcnzR70M9fvBbbU8S_JwU0FUT1ad6nbQhVjD4/gviz/tq?sheet=pegawai";
-              
-              fetch(sheetUrl)
-                .then(res => res.text())
-                .then(txt => {
-                  try {
-                    const jsonString = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
-                    const responseData = JSON.parse(jsonString);
-                    const rows = responseData.table.rows;
-                    let matchedUser = null;
-                    
-                    for (let i = 0; i < rows.length; i++) {
-                      const cells = rows[i].c;
-                      if (!cells) continue;
-                      
-                      const rowNip = cells[0] ? String(cells[0].v).trim() : "";
-                      const rowPass = cells[1] ? String(cells[1].v).trim() : "";
-                      const rowNama = cells[2] ? String(cells[2].v).trim() : "";
-                      const rowJabatan = cells[3] ? String(cells[3].v).trim() : "";
-                      const rowFoto = cells[4] ? String(cells[4].v) : "";
-                      
-                      if (rowNip === String(nip).trim()) {
-                        if (rowPass === String(password).trim() || rowNip === String(password).trim()) {
-                          matchedUser = {
-                            nip: rowNip,
-                            nama: rowNama,
-                            jabatan: rowJabatan,
-                            foto: rowFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
-                          };
-                          break;
-                        }
-                      }
-                    }
-                    
-                    if (matchedUser) {
-                      window.google.script.run._successHandler({ success: true, user: matchedUser });
-                    } else {
-                      fallbackLocalLogin(nip, password);
-                    }
-                  } catch(e) {
-                    fallbackLocalLogin(nip, password);
-                  }
-                })
-                .catch(err => {
-                  fallbackLocalLogin(nip, password);
-                });
-            },
-            getTotalPegawai: function() {
-              setTimeout(() => this._successHandler(12), 100);
-            },
-            getLivePresensi: function(tanggalStr) {
-              setTimeout(() => {
-                this._successHandler(localLivePresensiList);
-              }, 200);
-            },
-            submitPresensi: function(nip, tipe, lat, lng, imageBase64, statusPresensi, detailDL) {
-              const sekarang = new Date();
-              const jamStr = String(sekarang.getHours()).padStart(2, '0') + ":" + 
-                            String(sekarang.getMinutes()).padStart(2, '0') + ":" + 
-                            String(sekarang.getSeconds()).padStart(2, '0');
-              const tglStr = getWIBDateString();
-              
-              const currentUserData = JSON.parse(sessionStorage.getItem("sigap_user")) || {};
-              const userNama = currentUserData.nama || "User SIGAP";
-              const userJabatan = currentUserData.jabatan || "Pendidik";
-              const userFoto = currentUserData.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
+    // Tempelkan URL Web App Google Apps Script Anda di bawah ini:
+    const SPREADSHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxHPKi82-uZEclC93wsMNpHjI8HmvwnPZ-8czJWs7MECaoKrF_QkLOMkBc9criPnWy4Kw/exec"; 
 
-              if (tipe === "masuk") {
-                const existing = localLivePresensiList.find(p => p.nip === nip);
-                if (!existing) {
-                  localLivePresensiList.push({
-                    nip: nip,
-                    nama: userNama,
-                    jabatan: userJabatan,
-                    jamMasuk: jamStr,
-                    jamPulang: "",
-                    status: "Hadir",
-                    foto: userFoto
-                  });
-                }
-                
-                localRincianPresensiMap[tglStr] = {
-                  tanggal: tglStr,
-                  masuk: jamStr,
-                  pulang: "",
-                  status: "Hadir"
-                };
-              } else if (tipe === "pulang") {
-                const existing = localLivePresensiList.find(p => p.nip === nip);
-                if (existing) {
-                  existing.jamPulang = jamStr;
-                }
-                
-                if (localRincianPresensiMap[tglStr]) {
-                  localRincianPresensiMap[tglStr].pulang = jamStr;
-                } else {
-                  localRincianPresensiMap[tglStr] = {
-                    tanggal: tglStr,
-                    masuk: "",
-                    pulang: jamStr,
-                    status: "Hadir"
-                  };
-                }
-              }
-
-              setTimeout(() => {
-                window.google.script.run._successHandler({
-                  success: true,
-                  jam: jamStr,
-                  status: "Hadir"
-                });
-              }, 400);
-            },
-            submitDinasLuar: function(nip, tipeDL, lokasi, mulaiTgl, selesaiTgl, keterangan) {
-              setTimeout(() => {
-                window.google.script.run._successHandler({ success: true, message: "Pengajuan Dinas Luar berhasil dikirim." });
-              }, 300);
-            },
-            getDinasLuar: function(nip, bulan, tahun) {
-              setTimeout(() => {
-                window.google.script.run._successHandler([
-                  { id: "DL-01", tipe: "Dinas Luar Full", lokasi: "Dinas Pendidikan Provinsi Jabar", mulai: "2026-05-18", selesai: "2026-05-18", keterangan: "Rakor Kurikulum Merdeka", status: "Disetujui" }
-                ]);
-              }, 300);
-            },
-            submitIzinPersonal: function(nip, jenisIzin, tanggal, jamTibaPulang, keterangan) {
-              setTimeout(() => {
-                window.google.script.run._successHandler({ success: true, message: "Pengajuan izin berhasil dikirim." });
-              }, 300);
-            },
-            getIzinPersonal: function(nip, bulan, tahun) {
-              setTimeout(() => {
-                window.google.script.run._successHandler([
-                  { id: "IZ-01", jenis: "Izin Terlambat Masuk", tanggal: "2026-05-12", jam: "08:15", keterangan: "Menghadiri imunisasi anak balita", status: "Disetujui" }
-                ]);
-              }, 300);
-            },
-            getRekapPresensi: function(nip, bulan, tahun) {
-              const sekarang = new Date();
-              const formatBulan = String(sekarang.getMonth() + 1).padStart(2, '0');
-              const formatTahun = sekarang.getFullYear();
-              const tglHariIniStr = getWIBDateString();
-
-              const defaultRincian = [];
-              const jmlHari = new Date(tahun, bulan, 0).getDate();
-
-              for (let d = 1; d <= jmlHari; d++) {
-                const tempDate = new Date(tahun, bulan - 1, d);
-                const dayOfWeek = tempDate.getDay();
-                const formatTgl = `${tahun}-${String(bulan).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                
-                let status = "Alfa";
-                let masuk = "";
-                let pulang = "";
-                
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                  status = "off";
-                } else if (TANGGAL_MERAH.includes(formatTgl)) {
-                  status = "libur";
-                } else if (localRincianPresensiMap[formatTgl]) {
-                  masuk = localRincianPresensiMap[formatTgl].masuk;
-                  pulang = localRincianPresensiMap[formatTgl].pulang;
-                  status = localRincianPresensiMap[formatTgl].status;
-                }
-
-                defaultRincian.push({
-                  tanggal: formatTgl,
-                  masuk: masuk,
-                  pulang: pulang,
-                  status: status
-                });
-              }
-
-              setTimeout(() => {
-                window.google.script.run._successHandler({
-                  success: true,
-                  rekap: { alfa: 0, telat: 12, tap: 0, cuti: 0, izin: 1, dl: 1, wfh: 0 },
-                  rincian: defaultRincian
-                });
-              }, 300);
-            },
-            saveAlamatAkun: function(nip, alamat, lat, lng) {
-              setTimeout(() => {
-                window.google.script.run._successHandler({ success: true, message: "Alamat tempat tinggal berhasil diperbarui!" });
-              }, 300);
-            },
-            getAlamatAkun: function(nip) {
-              setTimeout(() => {
-                window.google.script.run._successHandler({
-                  alamat: "SMA Mifthaussaadah, Parung Panjang",
-                  lat: TARGET_LAT,
-                  lng: TARGET_LNG
-                });
-              }, 200);
-            }
-          }
-        }
-      };
-
-      function fallbackLocalLogin(nip, password) {
-        const simulatedTeachers = {
-          "19820512": { nama: "Dadan Amirulloh, S.Pd.I", jabatan: "Guru Ahli Madya / Kepala Sekolah", foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200" },
-          "19880115": { nama: "Siti Nurjanah, S.Pd", jabatan: "Guru Bahasa Indonesia", foto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200" },
-          "19900423": { nama: "Ahmad Subarjo, S.Pd", jabatan: "Guru Matematika", foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200" }
-        };
-
-        const teacher = simulatedTeachers[nip] || {
-          nama: "Pendidik SMA Mifthaussaadah",
-          jabatan: "Guru Pelopor",
-          foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200"
-        };
-
-        window.google.script.run._successHandler({
-          success: true,
-          user: {
-            nip: nip || "19820512",
-            nama: teacher.nama,
-            jabatan: teacher.jabatan,
-            foto: teacher.foto
-          }
-        });
-      }
-    }
-
-    // Objek Sesi Pegawai Aktif
+    const KOORDINAT_SEKOLAH = [-6.2088, 106.8456]; // SMA Mifthaussaadah (Titik Lock Geofence)
+    let userLocation = null; 
+    let map = null; 
+    let mapMarker = null;
+    let cameraStream = null;
     let currentUser = null;
-    let currentGeoLocation = { lat: null, lng: null, distance: null };
-    let isLocationSimulated = false; // Flag status simulasi geolokasi
-    
-    // Objek Peta Leaflet
-    let dlMapObj = null, dlMarker = null;
-    let akunMapObj = null, akunMarker = null;
+    let watchId = null; // Menyimpan ID tracker Geolocation
 
-    // Filter Kategori saat ini untuk DL & Izin
-    let currentTabDL = 'semua';
-    let currentTabIzin = 'semua';
-
-    // Data Penampung untuk Filter Real-time
-    let liveKehadiranDataGlobal = [];
-
-    // INISIALISASI SAAT HALAMAN SELESAI DI-LOAD
-    window.onload = function() {
-      setupRealtimeClock();
-      checkDeviceLocation();
-      
-      // Ambil data user dari SessionStorage jika sebelumnya sudah login
-      const cachedUser = sessionStorage.getItem("sigap_user");
-      if (cachedUser) {
-        try {
-          const parsedUser = JSON.parse(cachedUser);
-          if (parsedUser && parsedUser.nip && parsedUser.nama && parsedUser.nama !== "-") {
-            currentUser = parsedUser;
-            initDashboard();
-          } else {
-            sessionStorage.removeItem("sigap_user");
-          }
-        } catch (e) {
-          sessionStorage.removeItem("sigap_user");
+    // Database Lokal (Memory Session)
+    const database = {
+      pegawai: {
+        "19890101": {
+          nip: "19890101",
+          nama: "Drs. H. Ahmad Fauzi, M.Pd.",
+          jabatan: "Kepala Sekolah / Guru Utama",
+          foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=60"
+        },
+        "19920512": {
+          nip: "19920512",
+          nama: "Siti Rahmawati, S.Pd.",
+          jabatan: "Wakasek Kurikulum / Guru Fisika",
+          foto: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=60"
         }
-      }
+      },
+      liveKehadiran: [
+        { nama: "Budi Santoso, S.Kom", jabatan: "Guru TI", jam: "06:15", status: "Hadir", foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=60" },
+        { nama: "Rina Wijaya, S.Pd", jabatan: "Guru Matematika", jam: "06:22", status: "Hadir", foto: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=60" },
+        { nama: "Hendro, M.Pd", jabatan: "Guru Sejarah", jam: "06:45", status: "Terlambat (15m)", foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=60" },
+        { nama: "Lilis Marlina, S.Ag", jabatan: "Guru Agama", jam: "--:--", status: "Dinas Luar", foto: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&auto=format&fit=crop&q=60" }
+      ],
+      dinasLuar: [
+        { id: 1, tipe: "Dinas Luar Full", tglMulai: "2026-05-18", tglSelesai: "2026-05-20", keterangan: "Workshop Kurikulum Merdeka di Dinas Pendidikan", status: "Disetujui" },
+        { id: 2, tipe: "Dinas Luar Masuk Kerja", tglMulai: "2026-05-10", tglSelesai: "2026-05-10", keterangan: "Mengantar Siswa Olimpiade Sains", status: "Disetujui" }
+      ],
+      izinPersonal: [
+        { id: 1, jenis: "Izin Terlambat Masuk", tanggal: "2026-05-05", jam: "08:30", keterangan: "Kendala Servis Motor Rutin", status: "Disetujui" }
+      ],
+      riwayatPresensi: [
+        { tanggal: "2026-05-15", hari: "Jumat", masuk: "06:20", pulang: "15:05", status: "Hadir Tepat Waktu" },
+        { tanggal: "2026-05-14", hari: "Kamis", masuk: "06:28", pulang: "15:10", status: "Hadir Tepat Waktu" },
+        { tanggal: "2026-05-13", hari: "Rabu", masuk: "06:40", pulang: "15:02", status: "Terlambat (10 mnt)" },
+        { tanggal: "2026-05-12", hari: "Selasa", masuk: "06:15", pulang: "15:00", status: "Hadir Tepat Waktu" }
+      ]
     };
 
-    // FUNGSI JAM REALTIME & KALENDER INDONESIA
-    function setupRealtimeClock() {
-      const formatHari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-      const formatBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    window.onload = function() {
+      updateRealtimeClock();
+      setInterval(updateRealtimeClock, 1000);
+      setupRealGPS();
+    };
+
+    function updateRealtimeClock() {
+      const sekarang = new Date();
+      const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const tanggalString = sekarang.toLocaleDateString('id-ID', optionsTanggal);
+      const jamString = sekarang.toTimeString().split(' ')[0];
+
+      const elTanggal = document.getElementById('realtime-tanggal');
+      const elJam = document.getElementById('realtime-jam');
+      const elLiveTanggal = document.getElementById('live-tanggal');
+
+      if (elTanggal) elTanggal.innerText = tanggalString;
+      if (elJam) elJam.innerText = jamString;
+      if (elLiveTanggal) elLiveTanggal.innerText = tanggalString;
+    }
+
+    // ==========================================
+    // LOGIKA GPS ASLI (MURNI TANPA SIMULASI)
+    // ==========================================
+    function setupRealGPS() {
+      if (navigator.geolocation) {
+        // Melacak pergerakan GPS secara kontinu (WatchPosition)
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            userLocation = [position.coords.latitude, position.coords.longitude];
+            checkGeofenceDistance();
+          },
+          (error) => {
+            console.warn("GPS Gagal didapatkan:", error.message);
+            updateGPSStatus("error", `GPS Error: ${error.message}. Mohon aktifkan lokasi.`);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else {
+        updateGPSStatus("error", "Perangkat Anda tidak mendukung Geolocation.");
+      }
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // radius bumi dalam meter
+      const phi1 = lat1 * Math.PI/180;
+      const phi2 = lat2 * Math.PI/180;
+      const deltaPhi = (lat2-lat1) * Math.PI/180;
+      const deltaLambda = (lon2-lon1) * Math.PI/180;
+
+      const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c; // Hasil dalam meter
+    }
+
+    function checkGeofenceDistance() {
+      if (!userLocation) return;
       
-      setInterval(() => {
-        const sekarang = new Date();
-        const hari = formatHari[sekarang.getDay()];
-        const tanggal = sekarang.getDate();
-        const bulan = formatBulan[sekarang.getMonth()];
-        const tahun = sekarang.getFullYear();
+      const jarak = calculateDistance(userLocation[0], userLocation[1], KOORDINAT_SEKOLAH[0], KOORDINAT_SEKOLAH[1]);
+      const btnLonceng = document.getElementById('btn-lonceng');
+      const helperText = document.getElementById('btn-helper-text');
+
+      if (jarak <= 100) {
+        // Didalam area geofence
+        updateGPSStatus("success", `Lokasi Terverifikasi (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
+        btnLonceng.disabled = false;
+        btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
+        helperText.className = "text-[10px] text-emerald-600 mt-4 text-center font-bold";
+        helperText.innerText = "Sinyal GPS Terkunci. Silakan tekan tombol Lonceng untuk presensi.";
+      } else {
+        // Diluar area geofence
+        updateGPSStatus("outside", `Diluar Jangkauan (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
+        btnLonceng.disabled = true;
+        btnLonceng.className = "w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed";
+        helperText.className = "text-[10px] text-rose-500 mt-4 text-center font-bold";
+        helperText.innerText = `Anda berada diluar jangkauan sekolah. Minimal jarak: 100m. Jarak Anda sekarang: ${Math.round(jarak)}m.`;
+      }
+    }
+
+    function updateGPSStatus(type, message) {
+      const container = document.getElementById('gps-status-container');
+      const icon = document.getElementById('gps-status-icon');
+      const text = document.getElementById('gps-status-text');
+
+      if (type === "success") {
+        container.className = "w-full flex items-center gap-3 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl mb-6 transition-all";
+        icon.className = "fa-solid fa-circle-check text-emerald-500 text-lg animate-bounce";
+        text.innerText = message;
+      } else if (type === "outside") {
+        container.className = "w-full flex items-center gap-3 bg-rose-50 border border-rose-200 px-4 py-3 rounded-xl mb-6 transition-all";
+        icon.className = "fa-solid fa-triangle-exclamation text-rose-500 text-lg";
+        text.innerText = message;
+      } else {
+        container.className = "w-full flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 transition-all";
+        icon.className = "fa-solid fa-location-crosshairs text-amber-500 text-lg animate-spin";
+        text.innerText = message;
+      }
+    }
+
+    // ==========================================
+    // INTEGRASI DATABASE GOOGLE SPREADSHEET (APPS SCRIPT)
+    // ==========================================
+    async function kirimPresensiKeSpreadsheet(nip, nama, jabatan, tanggal, jam, tipe, koordinat, fotoBase64) {
+      if (!SPREADSHEET_WEB_APP_URL || SPREADSHEET_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+        console.warn("Spreadsheet Web App URL belum diisi. Data hanya akan disimpan secara lokal.");
+        return { success: true, localOnly: true };
+      }
+
+      const payload = {
+        nip: nip,
+        nama: nama,
+        jabatan: jabatan,
+        tanggal: tanggal,
+        jam: jam,
+        tipe: tipe,
+        koordinat: koordinat,
+        foto: fotoBase64
+      };
+
+      try {
+        const response = await fetch(SPREADSHEET_WEB_APP_URL, {
+          method: "POST",
+          mode: "no-cors", // Mode no-cors mengabaikan proteksi CORS Apps Script, namun data terkirim sempurna.
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
         
-        const jam = String(sekarang.getHours()).padStart(2, '0');
-        const fontMenit = String(sekarang.getMinutes()).padStart(2, '0');
-        const detik = String(sekarang.getSeconds()).padStart(2, '0');
-        
-        const dateStr = `${hari}, ${tanggal} ${bulan} ${tahun}`;
-        const timeStr = `${jam}:${fontMenit}:${detik}`;
-        
-        // Update DOM Beranda
-        const elDate = document.getElementById("realtime-tanggal");
-        const elTime = document.getElementById("realtime-jam");
-        if (elDate) elDate.innerText = dateStr;
-        if (elTime) elTime.innerText = timeStr;
-        
-        const elLiveTgl = document.getElementById("live-tanggal");
-        if (elLiveTgl) elLiveTgl.innerText = `${tanggal} ${bulan} ${tahun}`;
+        return { success: true };
+      } catch (error) {
+        console.error("Gagal mengirim presensi ke Google Sheets:", error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    // CUSTOM MODAL POP-UP
+    function showCustomModal(type, title, message) {
+      const modal = document.getElementById('custom-modal');
+      const iconContainer = document.getElementById('modal-icon-container');
+      const icon = document.getElementById('modal-icon');
+      const elTitle = document.getElementById('modal-title');
+      const elMsg = document.getElementById('modal-message');
+
+      elTitle.innerText = title;
+      elMsg.innerText = message;
+
+      if (type === 'success') {
+        iconContainer.className = "w-16 h-16 rounded-full flex items-center justify-center text-2xl bg-emerald-100 text-emerald-600";
+        icon.className = "fa-solid fa-circle-check";
+      } else {
+        iconContainer.className = "w-16 h-16 rounded-full flex items-center justify-center text-2xl bg-rose-100 text-rose-600";
+        icon.className = "fa-solid fa-circle-xmark";
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    function showLoading(show, text = "Memproses Data...") {
+      const overlay = document.getElementById('loading-overlay');
+      const textEl = document.getElementById('loading-text');
+      if (textEl) textEl.innerText = text;
+      
+      if (show) {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    // LOGIKA PROSES LOGIN
+    function handleLogin(event) {
+      event.preventDefault();
+      const nip = document.getElementById('login-nip').value.trim();
+      const pass = document.getElementById('login-password').value;
+
+      showLoading(true, "Memvalidasi Akredititas...");
+
+      setTimeout(() => {
+        showLoading(false);
+        if (database.pegawai[nip]) {
+          currentUser = database.pegawai[nip];
+          
+          document.getElementById('p-nama').innerText = currentUser.nama;
+          document.getElementById('p-jabatan').innerText = currentUser.jabatan;
+          document.getElementById('p-foto').src = currentUser.foto;
+
+          document.getElementById('page-login').classList.add('hidden');
+          document.getElementById('main-dashboard').classList.remove('hidden');
+
+          renderLivePresensi();
+          renderRiwayatList();
+          filterDinasLuar();
+          filterIzinPersonal();
+        } else {
+          showCustomModal("error", "Akses Ditolak", "NIP atau password Anda salah. Silakan coba 19890101 atau 19920512.");
+        }
       }, 1000);
     }
 
-    // CEK GEOLOKASI DEVICE SECARA REALTIME DENGAN FALLBACK JIKA ACCURACY GAGAL
-    function checkDeviceLocation() {
-      if (navigator.geolocation) {
-        const handleSuccess = (position) => {
-          if (isLocationSimulated) return; // Abaikan GPS rill jika simulasi sedang aktif
-
-          currentGeoLocation.lat = position.coords.latitude;
-          currentGeoLocation.lng = position.coords.longitude;
-          
-          currentGeoLocation.distance = calculateDistance(
-            currentGeoLocation.lat, currentGeoLocation.lng,
-            TARGET_LAT, TARGET_LNG
-          );
-
-          // Sembunyikan spanduk peringatan jika berhasil mendeteksi
-          document.getElementById("location-warning-banner").classList.add("hidden");
-        };
-
-        const handleError = (error) => {
-          const errorMsg = error ? (error.message || `Kode: ${error.code}`) : "Kesalahan tidak dikenal";
-          console.warn("Gagal mendeteksi lokasi... Detail: " + errorMsg);
-          
-          // Cek spesifik jika dilarang oleh kebijakan izin (permissions policy / sandboxing iframe)
-          if (errorMsg.toLowerCase().includes("permissions policy") || (error && error.code === 1)) {
-            showLocationWarning("Akses lokasi diblokir oleh kebijakan izin browser atau iframe (Permissions Policy). Silakan aktifkan simulasi lokasi sekolah menggunakan tombol di atas agar lonceng presensi dapat diklik.");
-            return;
-          }
-
-          // Fallback ke Low Accuracy
-          navigator.geolocation.getCurrentPosition(
-            handleSuccess,
-            (fallbackError) => {
-              const fbMsg = fallbackError ? (fallbackError.message || `Kode: ${fallbackError.code}`) : "Kesalahan tidak dikenal";
-              console.error("Gagal mendeteksi lokasi dengan mode standar: " + fbMsg);
-              showLocationWarning();
-            },
-            { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
-          );
-        };
-
-        // Mulai memantau posisi dengan penanganan aman
-        navigator.geolocation.watchPosition(
-          handleSuccess,
-          handleError,
-          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
-        );
-      } else {
-        console.error("Geolocation tidak didukung oleh browser ini.");
-        showLocationWarning();
-      }
-    }
-
-    // AKSI SIMULASI KOORDINAT SEKOLAH
-    function simulasikanLokasiSekolah() {
-      isLocationSimulated = true;
-      currentGeoLocation.lat = TARGET_LAT;
-      currentGeoLocation.lng = TARGET_LNG;
-      currentGeoLocation.distance = 0; // Jarak presisi 0 meter
-
-      showModal(
-        "Simulasi Aktif", 
-        "Lokasi Anda berhasil disimulasikan berada di dalam radius SMA Mifthaussaadah. Tombol lonceng presensi sekarang dapat diklik dengan normal.", 
-        true
-      );
-      
-      // Sembunyikan spanduk peringatan
-      document.getElementById("location-warning-banner").classList.add("hidden");
-    }
-
-    function showLocationWarning(customMessage) {
-      if (isLocationSimulated) return;
-      const banner = document.getElementById("location-warning-banner");
-      if (customMessage) {
-        const elText = document.getElementById("location-warning-text");
-        if (elText) elText.innerText = customMessage;
-      }
-      banner.classList.remove("hidden");
-    }
-
-    // RUMUS HAVERSINE UNTUK MENGHITUNG JARAK ANTARA DUA KOORDINAT (METER)
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // radius bumi dalam meter
-      const phi1 = lat1 * Math.PI / 180;
-      const phi2 = lat2 * Math.PI / 180;
-      const deltaPhi = (lat2 - lat1) * Math.PI / 180;
-      const deltaLambda = (lon2 - lon1) * Math.PI / 180;
-
-      const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                Math.cos(phi1) * Math.cos(phi2) *
-                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c; 
-    }
-
-    // MODAL CUSTOM ACTIONS
-    function showModal(title, msg, isSuccess) {
-      const modal = document.getElementById("custom-modal");
-      const iconCont = document.getElementById("modal-icon-container");
-      const icon = document.getElementById("modal-icon");
-      
-      document.getElementById("modal-title").innerText = title;
-      document.getElementById("modal-message").innerText = msg;
-      
-      if (isSuccess) {
-        iconCont.className = "w-16 h-16 rounded-full flex items-center justify-center text-2xl bg-emerald-100 text-emerald-600";
-        icon.className = "fa-solid fa-circle-check";
-      } else {
-        iconCont.className = "w-16 h-16 rounded-full flex items-center justify-center text-2xl bg-rose-100 text-rose-600";
-        icon.className = "fa-solid fa-circle-xmark";
-      }
-      
-      modal.classList.remove("hidden");
-    }
-
-    // TUTUP MODAL
-    function closeModal() {
-      document.getElementById("custom-modal").classList.add("hidden");
-    }
-
-    // PROGRESS OVERLAY
-    function setLoader(state) {
-      const overlay = document.getElementById("loading-overlay");
-      if (state) overlay.classList.remove("hidden");
-      else overlay.classList.add("hidden");
-    }
-
-    // LOGIN LOGIC (Menghubungkan login ke database server Apps Script)
-    function handleLogin(e) {
-      e.preventDefault();
-      const nip = document.getElementById("login-nip").value;
-      const pass = document.getElementById("login-password").value;
-      
-      setLoader(true);
-      
-      google.script.run
-        .withSuccessHandler((response) => {
-          setLoader(false);
-          if (response && response.success) {
-            currentUser = response.user; // Menyimpan objek user rill yang berisi 'nama' asli dari spreadsheet pegawai Kolom 3
-            sessionStorage.setItem("sigap_user", JSON.stringify(currentUser));
-            initDashboard();
-          } else {
-            showModal("Gagal Masuk", (response && response.message) ? response.message : "NIP atau password salah", false);
-          }
-        })
-        .withFailureHandler((err) => {
-          setLoader(false);
-          showModal("Error Koneksi", "Gagal menghubungi server: " + err, false);
-        })
-        .loginUser(nip, pass);
-    }
-
+    // LOGIKA PROSES LOGOUT
     function logout() {
-      sessionStorage.removeItem("sigap_user");
-      currentUser = null;
-      isLocationSimulated = false;
-      document.getElementById("main-dashboard").classList.add("hidden");
-      document.getElementById("page-login").classList.remove("hidden");
+      showLoading(true, "Menghapus Sesi...");
+      setTimeout(() => {
+        currentUser = null;
+        document.getElementById('main-dashboard').classList.add('hidden');
+        document.getElementById('page-login').classList.remove('hidden');
+        document.getElementById('login-nip').value = '';
+        document.getElementById('login-password').value = '';
+        tutupKamera();
+        showLoading(false);
+      }, 800);
     }
 
-    // INITIALIZE DASHBOARD SETELAH BERHASIL LOGIN
-    // Mendistribusikan nama rill hasil tarikan spreadsheet ke elemen HTML Beranda dan Akun
-    function initDashboard() {
-      if (!currentUser) return;
-
-      document.getElementById("page-login").classList.add("hidden");
-      document.getElementById("main-dashboard").classList.remove("hidden");
-      
-      // Ambil nama dari currentUser secara aman, fallback ke NIP jika data kosong
-      const displayName = currentUser.nama ? currentUser.nama : "Guru SIGAP (NIP: " + currentUser.nip + ")";
-      
-      // Distribusi Info Profil ke DOM Beranda
-      document.getElementById("p-nama").innerText = displayName; // <-- Nama asli guru dari spreadsheet Kolom 3
-      document.getElementById("p-jabatan").innerText = currentUser.jabatan || "Pendidik SMA Mifthaussaadah";
-      document.getElementById("p-foto").src = currentUser.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
-      
-      // Distribusi Info Profil ke DOM Akun
-      document.getElementById("akun-nama").innerText = displayName; // <-- Nama asli guru dari spreadsheet Kolom 3
-      document.getElementById("akun-nip").innerText = "NIP. " + currentUser.nip;
-      document.getElementById("akun-foto").src = currentUser.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
-      document.getElementById("akun-val-jabatan").innerText = currentUser.jabatan || "Guru Ahli Pertama";
-
-      // Penyesuaian Atasan Langsung secara Dinamis agar tidak terjadi kebingungan logis saat Kepala Sekolah login
-      const elAtasanNama = document.getElementById("atasan-nama");
-      const elAtasanDetail = document.getElementById("atasan-detail");
-      const elAtasanInisial = document.getElementById("atasan-inisial");
-
-      if (currentUser.nama && currentUser.nama.toLowerCase().includes("dadan amirulloh")) {
-        if (elAtasanNama) elAtasanNama.innerText = "Dinas Pendidikan Prov. Jabar";
-        if (elAtasanDetail) elAtasanDetail.innerText = "Pembina Utama / Pengawas Pembina SMA";
-        if (elAtasanInisial) elAtasanInisial.innerText = "DP";
-      } else {
-        if (elAtasanNama) elAtasanNama.innerText = "Dadan Amirulloh, S.Pd.I";
-        if (elAtasanDetail) elAtasanDetail.innerText = "Guru Ahli Madya / Kepala Sekolah SMA Mifthaussaadah";
-        if (elAtasanInisial) elAtasanInisial.innerText = "DA";
-      }
-
-      // Reset menu ke Beranda
-      switchMenu('beranda');
-      
-      // Ambil live presensi harian secara global
-      loadLiveKehadiran();
-      
-      // Inisialisasi status presensi mandiri guru
-      loadStatusPresensiHariIni();
-    }
-
-    // FUNGSI GANTI MENU (SPA SWITCH CASE)
-    function switchMenu(menuId) {
-      // Sembunyikan semua seksi
-      document.querySelectorAll("main > section").forEach(section => {
-        section.classList.add("hidden");
+    // SWITCH MENU
+    function switchMenu(targetMenu) {
+      const menus = ['beranda', 'dl', 'izin', 'riwayat'];
+      menus.forEach(menu => {
+        const section = document.getElementById(`menu-${menu}`);
+        const navBtn = document.getElementById(`nav-${menu}`);
+        
+        if (menu === targetMenu) {
+          section.classList.remove('hidden');
+          navBtn.classList.remove('text-slate-400', 'hover:text-emerald-600');
+          navBtn.classList.add('text-emerald-600');
+          
+          if (menu === 'dl') {
+            setTimeout(initLeafletMap, 100);
+          }
+        } else {
+          section.classList.add('hidden');
+          navBtn.classList.remove('text-emerald-600');
+          navBtn.classList.add('text-slate-400');
+        }
       });
-      // Hilangkan status aktif di navigasi
-      document.querySelectorAll("nav > button").forEach(btn => {
-        btn.classList.remove("text-emerald-600", "font-bold");
-        btn.classList.add("text-slate-400");
-      });
-
-      // Tampilkan menu yang dipilih
-      document.getElementById("menu-" + menuId).classList.remove("hidden");
-      document.getElementById("nav-" + menuId).classList.remove("text-slate-400");
-      document.getElementById("nav-" + menuId).classList.add("text-emerald-600", "font-bold");
-
-      // Inisialisasi khusus per menu
-      if (menuId === 'dl') {
-        initMapDL();
-        loadDinasLuar();
-      } else if (menuId === 'izin') {
-        loadIzinPersonal();
-      } else if (menuId === 'riwayat') {
-        loadRekapitulasi();
-      } else if (menuId === 'akun') {
-        initMapAkun();
-      }
+      tutupKamera();
     }
 
-    // KAMERA WIDGET: Buka dan Alirkan ke Video Elemen
-    let videoStream = null;
-    function bukaKameraPresensi() {
-      // 1. Validasi Jarak Geofencing (100 Meter)
-      if (currentGeoLocation.distance === null || isNaN(currentGeoLocation.distance)) {
-        showLocationWarning();
-        showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda, berikan izin akses lokasi, atau klik tombol simulasi lokasi sekolah pada spanduk kuning.", false);
+    // INTERAKSI WEB CAMERA
+    async function bukaKameraPresensi() {
+      if (!userLocation) {
+        showCustomModal("error", "Akses Terkunci", "Perangkat Anda belum mendeteksi koordinat GPS valid.");
         return;
       }
 
-      if (currentGeoLocation.distance > MAX_RADIUS_METER) {
-        showModal(
-          "Diluar Jangkauan", 
-          `Anda berjarak ${Math.round(currentGeoLocation.distance)} meter dari SMA Mifthaussaadah. Maksimal jarak absen adalah 100 meter.`, 
-          false
-        );
-        return;
-      }
-
-      // Tampilkan Widget Kamera
-      const widget = document.getElementById("camera-widget");
-      if (!widget) {
-        console.error("Widget kamera tidak ditemukan di dalam dokumen!");
-        return;
-      }
-      widget.classList.remove("hidden");
+      const widget = document.getElementById('camera-widget');
+      widget.classList.remove('hidden');
       widget.scrollIntoView({ behavior: 'smooth' });
 
-      // Mulai Video Stream
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-        .then(stream => {
-          videoStream = stream;
-          document.getElementById("video").srcObject = stream;
-        })
-        .catch(err => {
-          showModal("Kamera Gagal", "Gagal mengakses kamera perangkat: " + err, false);
-          widget.classList.add("hidden");
-        });
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        document.getElementById('video').srcObject = cameraStream;
+      } catch (err) {
+        console.error("Gagal menyalakan kamera:", err);
+        showCustomModal("error", "Kamera Error", "Gagal mengakses kamera. Silakan pastikan izin kamera diaktifkan di browser Anda.");
+        widget.classList.add('hidden');
+      }
     }
 
     function tutupKamera() {
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
       }
-      const widget = document.getElementById("camera-widget");
-      if (widget) widget.classList.add("hidden");
+      document.getElementById('camera-widget').classList.add('hidden');
     }
 
+    // AMBIL GAMBAR & PILIH PROSES PRESENSI
     function capturePhoto() {
-      const video = document.getElementById("video");
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
 
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Konversi Gambar Ke Base64 string
-      const imgBase64 = canvas.toDataURL("image/png");
+      // Konversi Gambar ke DataURL Base64 untuk dikirim ke Spreadsheet
+      const fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
-      tutupKamera();
-      setLoader(true);
+      showLoading(true, "Mengirim Data Presensi...");
 
-      // Cek apakah aksi saat ini untuk Masuk atau Pulang
-      const loncengText = document.getElementById("status-lonceng-text").innerText;
-      const tipePresensi = loncengText === "MASUK" ? "masuk" : "pulang";
-
-      // Pengumpulan info Izin DL khusus jika tipenya DL masuk kerja
-      const specDL = {
-        jamDatangDl: document.getElementById("dl-jam-datang").value,
-        jamSelesaiDl: document.getElementById("dl-jam-selesai").value
-      };
-
-      // Memaksa pengisian jam real-time di UI secara instan demi fluiditas visual sebelum penarikan data selesai
       const sekarang = new Date();
-      const jamMurniStr = String(sekarang.getHours()).padStart(2, '0') + ":" + 
-                          String(sekarang.getMinutes()).padStart(2, '0') + ":" + 
-                          String(sekarang.getSeconds()).padStart(2, '0');
+      const jamSekarang = sekarang.toTimeString().split(' ')[0].substring(0, 5);
+      const tglSekarang = sekarang.toISOString().split('T')[0];
+      const koordinatSekarang = userLocation ? `${userLocation[0]}, ${userLocation[1]}` : "Tidak Terdeteksi";
+      
+      const isMasuk = document.getElementById('status-lonceng-text').innerText === "MASUK";
+      const tipeAbsen = isMasuk ? "MASUK" : "PULANG";
 
-      if (tipePresensi === "masuk") {
-        document.getElementById("jam-masuk-realtime").innerText = jamMurniStr;
-      } else {
-        document.getElementById("jam-pulang-realtime").innerText = jamMurniStr;
-      }
+      // Kirim data ke Google Sheets secara real-time
+      kirimPresensiKeSpreadsheet(
+        currentUser.nip,
+        currentUser.nama,
+        currentUser.jabatan,
+        tglSekarang,
+        jamSekarang,
+        tipeAbsen,
+        koordinatSekarang,
+        fotoBase64
+      ).then((res) => {
+        showLoading(false);
+        tutupKamera();
 
-      // Memanggil fungsi rill submitPresensi ke Google Sheets Apps Script
-      google.script.run
-        .withSuccessHandler((response) => {
-          setLoader(false);
-          if (response.success) {
-            showModal("Presensi Berhasil", `Berhasil melakukan presensi ${tipePresensi}!`, true);
+        if (res.success) {
+          if (isMasuk) {
+            document.getElementById('jam-masuk-realtime').innerText = jamSekarang;
+            document.getElementById('status-lonceng-text').innerText = "PULANG";
+            document.getElementById('icon-lonceng').className = "fa-solid fa-bell-slash text-5xl text-rose-500";
+            document.getElementById('btn-lonceng').className = "w-32 h-32 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-rose-200/50 transition-all transform hover:scale-105 active:scale-95";
             
-            // ====== REAL-TIME UPDATE TRIGGER GLOBAL & INDIVIDUAL ======
-            // 1. Sinkronkan ulang jam realtime, teks lonceng, dan status tombol mandiri dari status spreadsheet hari ini
-            loadStatusPresensiHariIni();
+            database.liveKehadiran.unshift({
+              nama: currentUser.nama,
+              jabatan: currentUser.jabatan,
+              jam: jamSekarang,
+              status: "Hadir",
+              foto: currentUser.foto
+            });
 
-            // 2. Perbarui daftar Live Kehadiran hari ini agar nama langsung muncul di Beranda bawah
-            loadLiveKehadiran();
+            database.riwayatPresensi.unshift({
+              tanggal: tglSekarang,
+              hari: "Hari Ini",
+              masuk: jamSekarang,
+              pulang: "--:--",
+              status: "Hadir Tepat Waktu"
+            });
 
-            // 3. Perbarui rekapitulasi / rincian harian guru di tab riwayat secara instan
-            loadRekapitulasi();
-          } else {
-            showModal("Gagal Presensi", response.message, false);
-          }
-        })
-        .withFailureHandler((err) => {
-          setLoader(false);
-          showModal("Error Presensi", err, false);
-        })
-        .submitPresensi(currentUser.nip, tipePresensi, currentGeoLocation.lat, currentGeoLocation.lng, imgBase64, null, specDL);
-    }
-
-    // CEK STATUS PRESENSI GURU HARI INI SAAT INIALISASI BERANDA
-    function loadStatusPresensiHariIni() {
-      const hariIniStr = getWIBDateString(); // Menggunakan converter WIB agar kebal terhadap timezone misalignments
-      
-      google.script.run
-        .withSuccessHandler((response) => {
-          // Melindungi logika dari response kosong atau bukan bertipe array
-          if (!response || !Array.isArray(response)) {
-            return;
-          }
-
-          // Membaca NIP secara dinamis dari guru yang sedang login aktif (currentUser.nip)
-          const userPres = response.find(p => p && p.nip && String(p.nip).trim() === String(currentUser.nip).trim());
-          const btnLonceng = document.getElementById("btn-lonceng");
-          const iconLonceng = document.getElementById("icon-lonceng");
-          const textLonceng = document.getElementById("status-lonceng-text");
-
-          // Reset status default tombol jika belum terdeteksi presensi hari ini
-          textLonceng.innerText = "MASUK";
-          btnLonceng.disabled = false;
-          btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
-          iconLonceng.className = "fa-solid fa-bell text-5xl bell-ring";
-          document.getElementById("jam-masuk-realtime").innerText = "--:--";
-          document.getElementById("jam-pulang-realtime").innerText = "--:--";
-
-          if (userPres) {
-            if (userPres.jamMasuk) {
-              document.getElementById("jam-masuk-realtime").innerText = userPres.jamMasuk;
-              textLonceng.innerText = "PULANG";
-              iconLonceng.className = "fa-solid fa-bell text-5xl bell-ring";
-              if (userPres.status && userPres.status.includes("Dinas Luar")) {
-                document.getElementById("form-dl-presensi").classList.remove("hidden");
-              }
+            let modalMsg = "Presensi kehadiran MASUK berhasil dikirim ke Google Sheets.";
+            if (res.localOnly) {
+              modalMsg = "Presensi MASUK berhasil disimpan lokal! (Konfigurasikan Apps Script untuk integrasi Spreadsheet penuh).";
             }
-            if (userPres.jamPulang) {
-              document.getElementById("jam-pulang-realtime").innerText = userPres.jamPulang;
-              textLonceng.innerText = "DONE";
-              btnLonceng.disabled = true;
-              btnLonceng.className = "w-32 h-32 bg-slate-200 text-slate-500 rounded-full flex flex-col items-center justify-center shadow-md cursor-not-allowed";
-              iconLonceng.className = "fa-solid fa-circle-check text-5xl";
-            }
-          }
-        })
-        .getLivePresensi(hariIniStr);
-    }
-
-    // LIVE PRESENSI: Kumpulkan list pegawai yang sudah absen
-    function loadLiveKehadiran() {
-      const hariIniStr = getWIBDateString();
-      
-      // Ambil Total Pegawai Terlebih Dahulu
-      google.script.run
-        .withSuccessHandler((total) => {
-          document.getElementById("live-total-pegawai").innerText = total;
-        })
-        .getTotalPegawai();
-
-      google.script.run
-        .withSuccessHandler((data) => {
-          if (Array.isArray(data)) {
-            liveKehadiranDataGlobal = data;
-            renderLiveList(data);
+            showCustomModal("success", "Absen Masuk Tercatat!", modalMsg);
           } else {
-            liveKehadiranDataGlobal = [];
-            renderLiveList([]);
+            document.getElementById('jam-pulang-realtime').innerText = jamSekarang;
+            document.getElementById('status-lonceng-text').innerText = "SELESAI";
+            document.getElementById('btn-lonceng').disabled = true;
+            document.getElementById('btn-lonceng').className = "w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed";
+
+            if (database.riwayatPresensi[0] && database.riwayatPresensi[0].tanggal === tglSekarang) {
+              database.riwayatPresensi[0].pulang = jamSekarang;
+            }
+
+            let modalMsg = "Presensi kehadiran PULANG berhasil disimpan ke Google Sheets.";
+            if (res.localOnly) {
+              modalMsg = "Presensi PULANG berhasil disimpan lokal! (Konfigurasikan Apps Script untuk integrasi Spreadsheet penuh).";
+            }
+            showCustomModal("success", "Absen Pulang Tercatat!", modalMsg);
           }
-        })
-        .getLivePresensi(hariIniStr);
-    }
-
-    // Menampilkan seluruh guru yang sudah presensi hari ini secara detail
-    function renderLiveList(list) {
-      const listContainer = document.getElementById("live-list-pegawai");
-      listContainer.innerHTML = "";
-
-      if (!Array.isArray(list) || list.length === 0) {
-        listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada pegawai yang presensi hari ini.</p>`;
-        return;
-      }
-
-      list.forEach(p => {
-        let statusText = p.status || 'Hadir';
-        let statusColor = "bg-emerald-100 text-emerald-800";
-        
-        if (statusText === "Terlambat") {
-          statusColor = "bg-amber-100 text-amber-800";
-        } else if (statusText === "Alfa" || statusText === "libur" || statusText === "Libur") {
-          statusColor = "bg-rose-100 text-rose-800";
-        } else if (statusText === "off" || statusText === "Off") {
-          statusColor = "bg-slate-100 text-slate-800";
-        } else if (statusText && statusText.includes("Izin")) {
-          statusColor = "bg-blue-100 text-blue-800";
+          
+          renderLivePresensi();
+          renderRiwayatList();
+        } else {
+          showCustomModal("error", "Database Error", "Gagal menyimpan presensi ke spreadsheet Anda. Silakan hubungi tim IT.");
         }
-
-        const card = `
-          <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <img src="${p.foto}" alt="${p.nama}" class="w-10 h-10 rounded-lg object-cover shadow-sm">
-            <div class="flex-1">
-              <h4 class="text-xs font-bold text-slate-800 leading-tight">${p.nama}</h4>
-              <p class="text-[10px] text-slate-400 font-semibold">${p.jabatan}</p>
-            </div>
-            <div class="text-right">
-              <span class="text-[8px] font-bold px-2 py-0.5 rounded ${statusColor} uppercase">${statusText}</span>
-              <div class="text-[9px] text-slate-500 mt-1">
-                <span>M: <strong class="text-slate-700">${p.jamMasuk || '-'}</strong></span>
-                <span class="ml-1.5">P: <strong class="text-slate-700">${p.jamPulang || '-'}</strong></span>
-              </div>
-            </div>
-          </div>
-        `;
-        listContainer.insertAdjacentHTML('beforeend', card);
       });
     }
 
-    function filterLivePresensi() {
-      const searchVal = document.getElementById("live-search").value.toLowerCase();
-      const filtered = liveKehadiranDataGlobal.filter(p => p && p.nama && p.nama.toLowerCase().includes(searchVal));
-      renderLiveList(filtered);
-    }
-
-    // LOKASI PETA LEAFLET UNTUK DINAS LUAR & AKUN ALAMAT
-    function initMapDL() {
-      if (dlMapObj) return; 
+    // LIVE PRESENSI (PEGAWAI LAIN)
+    function renderLivePresensi() {
+      const listEl = document.getElementById('live-list-pegawai');
+      const searchVal = document.getElementById('live-search').value.toLowerCase();
       
-      setTimeout(() => {
-        dlMapObj = L.map('dl-map').setView([TARGET_LAT, TARGET_LNG], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(dlMapObj);
+      const filtered = database.liveKehadiran.filter(p => p.nama.toLowerCase().includes(searchVal));
+      document.getElementById('live-total-pegawai').innerText = filtered.length;
 
-        dlMarker = L.marker([TARGET_LAT, TARGET_LNG], { draggable: true }).addTo(dlMapObj);
-        
-        dlMarker.on('dragend', function (e) {
-          const pos = dlMarker.getLatLng();
-          document.getElementById("dl-coords").value = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
-        });
-
-        dlMapObj.on('click', function (e) {
-          dlMarker.setLatLng(e.latlng);
-          document.getElementById("dl-coords").value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
-        });
-        
-        document.getElementById("dl-coords").value = `${TARGET_LAT}, ${TARGET_LNG}`;
-      }, 300);
-    }
-
-    function initMapAkun() {
-      if (akunMapObj) {
-        loadSavedAlamatAkun();
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada pegawai yang cocok.</p>`;
         return;
       }
 
-      setTimeout(() => {
-        akunMapObj = L.map('akun-map').setView([TARGET_LAT, TARGET_LNG], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(akunMapObj);
-
-        akunMarker = L.marker([TARGET_LAT, TARGET_LNG], { draggable: true }).addTo(akunMapObj);
-        
-        akunMarker.on('dragend', function (e) {
-          const pos = akunMarker.getLatLng();
-          document.getElementById("akun-coords").value = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
-        });
-
-        akunMapObj.on('click', function (e) {
-          akunMarker.setLatLng(e.latlng);
-          document.getElementById("akun-coords").value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
-        });
-
-        document.getElementById("akun-coords").value = `${TARGET_LAT}, ${TARGET_LNG}`;
-        
-        loadSavedAlamatAkun();
-      }, 300);
+      listEl.innerHTML = filtered.map(item => `
+        <div class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+          <img src="${item.foto}" class="w-10 h-10 rounded-xl object-cover" alt="Foto">
+          <div class="flex-1 min-w-0">
+            <h4 class="text-xs font-bold text-slate-800 truncate">${item.nama}</h4>
+            <p class="text-[10px] text-slate-500 font-semibold truncate">${item.jabatan}</p>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] font-bold text-emerald-600 block bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">${item.status}</span>
+            <span class="text-[9px] text-slate-400 block mt-1">${item.jam} WIB</span>
+          </div>
+        </div>
+      `).join('');
     }
 
-    // MEMANGGIL ENDPOINT PENCARIAN ALAMAT (NOMINATIM API)
-    function cariLokasiPeta(tipe) {
-      const query = document.getElementById(tipe === 'dl' ? "dl-search-lokasi" : "akun-search-alamat").value;
+    function filterLivePresensi() {
+      renderLivePresensi();
+    }
+
+    // PETA DINAS LUAR (LEAFLET)
+    function initLeafletMap() {
+      if (map) return;
+
+      map = L.map('dl-map').setView(KOORDINAT_SEKOLAH, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      L.marker(KOORDINAT_SEKOLAH).addTo(map)
+        .bindPopup('<b>SMA Mifthaussaadah</b><br>Titik Pusat Presensi Utama.')
+        .openPopup();
+
+      map.on('click', function(e) {
+        const lat = e.latlng.lat.toFixed(6);
+        const lng = e.latlng.lng.toFixed(6);
+        document.getElementById('dl-coords').value = `${lat}, ${lng}`;
+
+        if (mapMarker) {
+          mapMarker.setLatLng(e.latlng);
+        } else {
+          mapMarker = L.marker(e.latlng).addTo(map);
+        }
+      });
+    }
+
+    function cariLocationsPeta() {
+      const query = document.getElementById('dl-search-lokasi').value.trim();
       if (!query) return;
 
-      setLoader(true);
+      showLoading(true, "Mencari Lokasi...");
       fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
-        .then(res => res.json())
+        .then(response => response.json())
         .then(data => {
-          setLoader(false);
+          showLoading(false);
           if (data && data.length > 0) {
             const firstResult = data[0];
             const lat = parseFloat(firstResult.lat);
             const lon = parseFloat(firstResult.lon);
+            
+            map.setView([lat, lon], 14);
+            document.getElementById('dl-coords').value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
-            if (tipe === 'dl') {
-              dlMapObj.setView([lat, lon], 15);
-              dlMarker.setLatLng([lat, lon]);
-              document.getElementById("dl-coords").value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-              document.getElementById("dl-search-lokasi").value = firstResult.display_name; 
+            if (mapMarker) {
+              mapMarker.setLatLng([lat, lon]);
             } else {
-              akunMapObj.setView([lat, lon], 15);
-              akunMarker.setLatLng([lat, lon]);
-              document.getElementById("akun-coords").value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-              document.getElementById("akun-search-alamat").value = firstResult.display_name;
+              mapMarker = L.marker([lat, lon]).addTo(map);
             }
           } else {
-            showModal("Lokasi Tidak Ditemukan", "Alamat pencarian tidak ditemukan di peta.", false);
+            showCustomModal("error", "Tidak Ditemukan", "Alamat yang dicari tidak ditemukan.");
           }
         })
         .catch(err => {
-          setLoader(false);
-          showModal("Gagal Mencari", "Gagal menghubungi API peta: " + err, false);
+          showLoading(false);
+          showCustomModal("error", "Koneksi Error", "Gagal memproses pencarian peta.");
         });
     }
 
-    function saveMapLocation(tipe) {
-      const coords = document.getElementById(tipe === 'dl' ? "dl-coords" : "akun-coords").value;
-      showModal("Lokasi Disimpan", "Lokasi presensi dinas berhasil ditandai ke koordinat: " + coords, true);
-    }
-
-    // DINAS LUAR (DL): AJUKAN & RENDER DATA
-    function bukaFormDL(show) {
-      const form = document.getElementById("form-pengajuan-dl");
-      if (show) form.classList.remove("hidden");
-      else form.classList.add("hidden");
-    }
-
-    function kirimDinasLuar(e) {
-      e.preventDefault();
-      setLoader(true);
-
-      const tipe = document.getElementById("dl-tipe").value;
-      const lokasi = document.getElementById("dl-search-lokasi").value || document.getElementById("dl-coords").value;
-      const mulai = document.getElementById("dl-tgl-mulai").value;
-      const selesai = document.getElementById("dl-tgl-selesai").value;
-      const keterangan = document.getElementById("dl-keterangan").value;
-
-      google.script.run
-        .withSuccessHandler((res) => {
-          setLoader(false);
-          if (res.success) {
-            showModal("Berhasil", res.message, true);
-            bukaFormDL(false);
-            loadDinasLuar(); 
-          } else {
-            showModal("Gagal", res.message, false);
-          }
-        })
-        .withFailureHandler((err) => {
-          setLoader(false);
-          showModal("Gagal Pengajuan", err, false);
-        })
-        .submitDinasLuar(currentUser.nip, tipe, lokasi, mulai, selesai, keterangan);
-    }
-
+    // LAYANAN DINAS LUAR (DL)
+    let currentTabDL = 'semua';
     function setTabDL(status) {
       currentTabDL = status;
-      document.querySelectorAll("[id^='tab-dl-']").forEach(btn => {
-        btn.classList.remove("border-emerald-600", "text-emerald-600");
-        btn.classList.add("border-transparent", "text-slate-400");
+      const tabs = ['semua', 'Menunggu', 'Disetujui', 'Ditolak'];
+      tabs.forEach(tab => {
+        const el = document.getElementById(`tab-dl-${tab}`);
+        if (tab === status) {
+          el.className = "flex-1 py-2 text-center font-bold border-b-2 border-emerald-600 text-emerald-600";
+        } else {
+          el.className = "flex-1 py-2 text-center font-bold border-b-2 border-transparent text-slate-400";
+        }
       });
-      document.getElementById("tab-dl-" + status).classList.add("border-emerald-600", "text-emerald-600");
-      loadDinasLuar();
+      filterDinasLuar();
     }
 
-    function loadDinasLuar() {
-      const bulan = document.getElementById("filter-dl-bulan").value;
-      const tahun = document.getElementById("filter-dl-tahun").value;
-      const listDL = document.getElementById("list-dl");
-
-      listDL.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Memproses data dinas luar...</p>`;
-
-      google.script.run
-        .withSuccessHandler((data) => {
-          listDL.innerHTML = "";
-          
-          if (!Array.isArray(data)) {
-            listDL.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada data dinas luar untuk kriteria ini.</p>`;
-            return;
-          }
-
-          const filtered = data.filter(item => item && item.status && (currentTabDL === 'semua' || item.status.toLowerCase() === currentTabDL.toLowerCase()));
-
-          if (filtered.length === 0) {
-            listDL.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada data dinas luar untuk kriteria ini.</p>`;
-            return;
-          }
-
-          filtered.forEach(item => {
-            let statusColor = "bg-slate-100 text-slate-700";
-            if (item.status === "Disetujui") statusColor = "bg-emerald-100 text-emerald-800";
-            else if (item.status === "Ditolak") statusColor = "bg-rose-100 text-rose-800";
-            else if (item.status === "Menunggu") statusColor = "bg-amber-100 text-amber-800";
-
-            const card = `
-              <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col gap-2">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <span class="text-[9px] font-bold text-emerald-600 uppercase tracking-wide bg-emerald-50 px-2 py-1 rounded">${item.tipe}</span>
-                    <h4 class="text-xs font-bold text-slate-800 mt-2"><i class="fa-solid fa-map-pin text-rose-500 mr-1"></i> ${item.lokasi}</h4>
-                  </div>
-                  <span class="text-[8px] font-bold px-2 py-0.5 rounded ${statusColor} uppercase">${item.status}</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-50 pt-2 flex flex-col gap-1">
-                  <span>Mulai: <strong>${item.mulai}</strong> s/d Selesai: <strong>${item.selesai}</strong></span>
-                  <span class="text-slate-600 italic">" ${item.keterangan} "</span>
-                </div>
-              </div>
-            `;
-            listDL.insertAdjacentHTML('beforeend', card);
-          });
-        })
-        .getDinasLuar(currentUser.nip, bulan, tahun);
-    }
-
-    // IZIN PERSONAL: AJUKAN & RENDER DATA
-    function bukaFormIzin(show) {
-      const form = document.getElementById("form-pengajuan-izin");
-      if (show) form.classList.remove("hidden");
-      else form.classList.add("hidden");
-    }
-
-    // Mengatur input jam target terlambat/pulang cepat
-    function toggleIzinTimeInput() {
-      const jenis = document.getElementById("izin-jenis").value;
-      const lbl = document.getElementById("lbl-jam-izin");
-      if (jenis === "Izin Terlambat Masuk") {
-        lbl.innerText = "Jam Tiba Datang";
+    function bukaFormDL(buka) {
+      const form = document.getElementById('form-pengajuan-dl');
+      if (buka) {
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth' });
       } else {
-        lbl.innerText = "Jam Pulang Cepat";
+        form.classList.add('hidden');
       }
     }
 
-    // Mengirim pengajuan izin personal
-    function kirimIzinPersonal(e) {
-      e.preventDefault();
-      setLoader(true);
+    function kirimDinasLuar(event) {
+      event.preventDefault();
+      const tipe = document.getElementById('dl-tipe').value;
+      const tglMulai = document.getElementById('dl-tgl-mulai').value;
+      const tglSelesai = document.getElementById('dl-tgl-selesai').value;
+      const keterangan = document.getElementById('dl-keterangan').value;
+      const coords = document.getElementById('dl-coords').value;
 
-      const jenis = document.getElementById("izin-jenis").value;
-      const tgl = document.getElementById("izin-tanggal").value;
-      const jam = document.getElementById("izin-jam").value;
-      const keterangan = document.getElementById("izin-keterangan").value;
+      showLoading(true, "Mengirim Pengajuan DL...");
 
-      google.script.run
-        .withSuccessHandler((res) => {
-          setLoader(false);
-          if (res.success) {
-            showModal("Izin Dikirim", res.message, true);
-            bukaFormIzin(false);
-            loadIzinPersonal();
-          } else {
-            showModal("Gagal Izin", res.message, false);
-          }
-        })
-        .withFailureHandler((err) => {
-          setLoader(false);
-          showModal("Gagal", err, false);
-        })
-        .submitIzinPersonal(currentUser.nip, jenis, tgl, jam, keterangan);
+      setTimeout(() => {
+        showLoading(false);
+        database.dinasLuar.unshift({
+          id: Date.now(),
+          tipe,
+          tglMulai,
+          tglSelesai,
+          keterangan: keterangan + (coords ? ` [Lokasi Koordinat: ${coords}]` : ''),
+          status: "Menunggu"
+        });
+
+        document.getElementById('dl-tgl-mulai').value = '';
+        document.getElementById('dl-tgl-selesai').value = '';
+        document.getElementById('dl-keterangan').value = '';
+        document.getElementById('dl-coords').value = '';
+        if (mapMarker) {
+          map.removeLayer(mapMarker);
+          mapMarker = null;
+        }
+
+        bukaFormDL(false);
+        filterDinasLuar();
+        showCustomModal("success", "Pengajuan Dikirim", "Dinas luar Anda berhasil diajukan dan sedang menunggu verifikasi.");
+      }, 1200);
     }
 
-    function setTabIzin(status) {
-      currentTabIzin = status;
-      document.querySelectorAll("[id^='tab-izin-']").forEach(btn => {
-        btn.classList.remove("border-emerald-600", "text-emerald-600");
-        btn.classList.add("border-transparent", "text-slate-400");
+    function filterDinasLuar() {
+      const container = document.getElementById('list-dl');
+      const tahun = document.getElementById('filter-dl-tahun').value;
+      const bulan = document.getElementById('filter-dl-bulan').value;
+
+      let filtered = database.dinasLuar;
+
+      if (currentTabDL !== 'semua') {
+        filtered = filtered.filter(item => item.status === currentTabDL);
+      }
+
+      filtered = filtered.filter(item => {
+        const tgl = new Date(item.tglMulai);
+        const matchesTahun = tgl.getFullYear().toString() === tahun;
+        const matchesBulan = bulan === "semua" ? true : (tgl.getMonth() + 1).toString() === bulan;
+        return matchesTahun && matchesBulan;
       });
-      document.getElementById("tab-izin-" + status).classList.add("border-emerald-600", "text-emerald-600");
-      loadIzinPersonal();
-    }
 
-    function loadIzinPersonal() {
-      const bulan = document.getElementById("filter-izin-bulan").value;
-      const tahun = document.getElementById("filter-izin-tahun").value;
-      const listIzin = document.getElementById("list-izin");
-
-      listIzin.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Memproses data izin...</p>`;
-
-      google.script.run
-        .withSuccessHandler((data) => {
-          listIzin.innerHTML = "";
-          
-          if (!Array.isArray(data)) {
-            listIzin.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada data izin personal untuk kriteria ini.</p>`;
-            return;
-          }
-
-          const filtered = data.filter(item => item && item.status && (currentTabIzin === 'semua' || item.status.toLowerCase() === currentTabIzin.toLowerCase()));
-
-          if (filtered.length === 0) {
-            listIzin.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada data izin personal untuk kriteria ini.</p>`;
-            return;
-          }
-
-          filtered.forEach(item => {
-            let statusColor = "bg-slate-100 text-slate-700";
-            if (item.status === "Disetujui") statusColor = "bg-emerald-100 text-emerald-800";
-            else if (item.status === "Ditolak") statusColor = "bg-rose-100 text-rose-800";
-            else if (item.status === "Menunggu") statusColor = "bg-amber-100 text-amber-800";
-
-            const card = `
-              <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col gap-2">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <span class="text-[9px] font-bold text-amber-600 uppercase tracking-wide bg-amber-50 px-2 py-1 rounded">${item.jenis}</span>
-                    <h4 class="text-xs font-bold text-slate-800 mt-2"><i class="fa-regular fa-calendar-check mr-1 text-slate-400"></i> Tanggal Izin: ${item.tanggal}</h4>
-                  </div>
-                  <span class="text-[8px] font-bold px-2 py-0.5 rounded ${statusColor} uppercase">${item.status}</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-50 pt-2 flex flex-col gap-1">
-                  <span>Waktu Jam Target: <strong>${item.jam} WIB</strong></span>
-                  <span class="text-slate-600 italic">" ${item.keterangan} "</span>
-                </div>
-              </div>
-            `;
-            listIzin.insertAdjacentHTML('beforeend', card);
-          });
-        })
-        .getIzinPersonal(currentUser.nip, bulan, tahun);
-    }
-
-    // RIWAYAT & REKAPITULASI PRESENSI BULANAN
-    function loadRekapitulasi() {
-      const bulan = document.getElementById("filter-riwayat-bulan").value;
-      const tahun = document.getElementById("filter-riwayat-tahun").value;
-      const containerHarian = document.getElementById("rincian-harian-list");
-
-      containerHarian.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Mengkalkulasi rekap kehadiran...</p>`;
-
-      google.script.run
-        .withSuccessHandler((response) => {
-          if (response && response.success) {
-            document.getElementById("rekap-alfa").innerText = (response.rekap ? response.rekap.alfa : 0) + " mnt";
-            document.getElementById("rekap-telat").innerText = (response.rekap ? response.rekap.telat : 0) + " mnt";
-            document.getElementById("rekap-tap").innerText = (response.rekap ? response.rekap.tap : 0) + " mnt";
-            
-            document.getElementById("rekap-cuti").innerText = response.rekap ? response.rekap.cuti : 0;
-            document.getElementById("rekap-izin").innerText = response.rekap ? response.rekap.izin : 0;
-            document.getElementById("rekap-dl").innerText = response.rekap ? response.rekap.dl : 0;
-            document.getElementById("rekap-wfh").innerText = response.rekap ? response.rekap.wfh : 0;
-
-            containerHarian.innerHTML = "";
-            if (response.rincian && Array.isArray(response.rincian)) {
-              response.rincian.forEach(row => {
-                let statusText = row.status;
-                let statusStyle = "bg-slate-100 text-slate-500";
-
-                if (row.status === "off") {
-                  statusText = "OFF/WEEKEND";
-                  statusStyle = "bg-slate-100 text-slate-400";
-                } else if (row.status === "libur") {
-                  statusText = "LIBUR/TGL MERAH";
-                  statusStyle = "bg-rose-100 text-rose-800 font-semibold";
-                } else if (row.status === "Alfa") {
-                  statusStyle = "bg-rose-100 text-rose-800 font-semibold";
-                } else if (row.status === "Terlambat") {
-                  statusStyle = "bg-amber-100 text-amber-800 font-semibold";
-                } else if (row.status === "Hadir") {
-                  statusStyle = "bg-emerald-100 text-emerald-800 font-semibold";
-                }
-
-                const rowHtml = `
-                  <div class="flex items-center justify-between p-3 border-b border-slate-50 text-xs">
-                    <div>
-                      <h5 class="font-bold text-slate-800">${row.tanggal}</h5>
-                      <div class="flex gap-3 text-[10px] text-slate-400 mt-1">
-                        <span>Masuk: <strong class="text-slate-600">${row.masuk || '--:--'}</strong></span>
-                        <span>Pulang: <strong class="text-slate-600">${row.pulang || '--:--'}</strong></span>
-                      </div>
-                    </div>
-                    <span class="text-[9px] px-2 py-0.5 rounded uppercase ${statusStyle}">${statusText}</span>
-                  </div>
-                `;
-                containerHarian.insertAdjacentHTML('beforeend', rowHtml);
-              });
-            }
-          } else {
-            containerHarian.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Gagal memuat rincian harian.</p>`;
-          }
-        })
-        .getRekapPresensi(currentUser.nip, bulan, tahun);
-    }
-
-    // SIMPAN ALAMAT DI MENU AKUN
-    function saveAlamatKeAkun() {
-      const alamat = document.getElementById("akun-search-alamat").value;
-      const coords = document.getElementById("akun-coords").value;
-
-      if (!alamat || !coords) {
-        showModal("Lengkapi Alamat", "Harap cari alamat di peta terlebih dahulu.", false);
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada riwayat dinas luar pada kriteria ini.</p>`;
         return;
       }
 
-      setLoader(true);
-      const parts = coords.split(",");
-      const lat = parseFloat(parts[0]);
-      const lng = parseFloat(parts[1]);
+      container.innerHTML = filtered.map(item => {
+        let statusBadge = '';
+        if (item.status === 'Disetujui') {
+          statusBadge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Disetujui</span>';
+        } else if (item.status === 'Menunggu') {
+          statusBadge = '<span class="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Menunggu</span>';
+        } else {
+          statusBadge = '<span class="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Ditolak</span>';
+        }
 
-      google.script.run
-        .withSuccessHandler((res) => {
-          setLoader(false);
-          if (res.success) {
-            showModal("Sukses", "Alamat tempat tinggal berhasil diperbarui!", true);
-          } else {
-            showModal("Gagal", res.message, false);
-          }
-        })
-        .withFailureHandler((err) => {
-          setLoader(false);
-          showModal("Gagal", err, false);
-        })
-        .saveAlamatAkun(currentUser.nip, alamat, lat, lng);
+        return `
+          <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col gap-2">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">${item.tipe}</h4>
+                <p class="text-[9px] text-slate-400 mt-0.5">${item.tglMulai} s/d ${item.tglSelesai}</p>
+              </div>
+              ${statusBadge}
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">${item.keterangan}</p>
+          </div>
+        `;
+      }).join('');
     }
 
-    function loadSavedAlamatAkun() {
-      google.script.run
-        .withSuccessHandler((data) => {
-          if (data && data.alamat && data.lat && data.lng) {
-            document.getElementById("akun-search-alamat").value = data.alamat;
-            document.getElementById("akun-coords").value = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-            
-            akunMapObj.setView([data.lat, data.lng], 15);
-            akunMarker.setLatLng([data.lat, data.lng]);
-          }
-        })
-        .getAlamatAkun(currentUser.nip);
+    // LAYANAN IZIN PERSONAL (IZIN)
+    let currentTabIzin = 'semua';
+    function setTabIzin(status) {
+      currentTabIzin = status;
+      const tabs = ['semua', 'Menunggu', 'Disetujui', 'Ditolak'];
+      tabs.forEach(tab => {
+        const el = document.getElementById(`tab-izin-${tab}`);
+        if (tab === status) {
+          el.className = "flex-1 py-2 text-center font-bold border-b-2 border-emerald-600 text-emerald-600";
+        } else {
+          el.className = "flex-1 py-2 text-center font-bold border-b-2 border-transparent text-slate-400";
+        }
+      });
+      filterIzinPersonal();
+    }
+
+    function bukaFormIzin(buka) {
+      const form = document.getElementById('form-pengajuan-izin');
+      if (buka) {
+        form.classList.remove('hidden');
+        form.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        form.classList.add('hidden');
+      }
+    }
+
+    function kirimIzinPersonal(event) {
+      event.preventDefault();
+      const jenis = document.getElementById('izin-jenis').value;
+      const tanggal = document.getElementById('izin-tanggal').value;
+      const jam = document.getElementById('izin-jam').value;
+      const keterangan = document.getElementById('izin-keterangan').value;
+
+      showLoading(true, "Mengirim Pengajuan Izin...");
+
+      setTimeout(() => {
+        showLoading(false);
+        database.izinPersonal.unshift({
+          id: Date.now(),
+          jenis,
+          tanggal,
+          jam,
+          keterangan,
+          status: "Menunggu"
+        });
+
+        document.getElementById('izin-tanggal').value = '';
+        document.getElementById('izin-jam').value = '';
+        document.getElementById('izin-keterangan').value = '';
+
+        bukaFormIzin(false);
+        filterIzinPersonal();
+        showCustomModal("success", "Izin Dikirim", "Izin personal berhasil dikirim dan sedang dalam proses peninjauan.");
+      }, 1000);
+    }
+
+    function filterIzinPersonal() {
+      const container = document.getElementById('list-izin');
+      const tahun = document.getElementById('filter-izin-tahun').value;
+      const bulan = document.getElementById('filter-izin-bulan').value;
+
+      let filtered = database.izinPersonal;
+
+      if (currentTabIzin !== 'semua') {
+        filtered = filtered.filter(item => item.status === currentTabIzin);
+      }
+
+      filtered = filtered.filter(item => {
+        const tgl = new Date(item.tanggal);
+        const matchesTahun = tgl.getFullYear().toString() === tahun;
+        const matchesBulan = bulan === "semua" ? true : (tgl.getMonth() + 1).toString() === bulan;
+        return matchesTahun && matchesBulan;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada riwayat izin personal pada kriteria ini.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        let statusBadge = '';
+        if (item.status === 'Disetujui') {
+          statusBadge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Disetujui</span>';
+        } else if (item.status === 'Menunggu') {
+          statusBadge = '<span class="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Menunggu</span>';
+        } else {
+          statusBadge = '<span class="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-bold px-2 py-0.5 rounded-md">Ditolak</span>';
+        }
+
+        return `
+          <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col gap-2">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">${item.jenis}</h4>
+                <p class="text-[9px] text-slate-400 mt-0.5">Tanggal: ${item.tanggal} | Jam: ${item.jam} WIB</p>
+              </div>
+              ${statusBadge}
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">${item.keterangan}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // RIWAYAT & REKAPITULASI
+    function renderRiwayatList() {
+      const container = document.getElementById('rincian-harian-list');
+      const tahun = document.getElementById('filter-riwayat-tahun').value;
+      const bulan = document.getElementById('filter-riwayat-bulan').value;
+
+      let filtered = database.riwayatPresensi.filter(item => {
+        const tgl = new Date(item.tanggal);
+        const matchesTahun = tgl.getFullYear().toString() === tahun;
+        const matchesBulan = (tgl.getMonth() + 1).toString() === bulan;
+        return matchesTahun && matchesBulan;
+      });
+
+      let totalHadir = 0;
+      let totalTerlambatMnt = 0;
+      let totalAlfa = 0;
+      let totalSakit = 0;
+      let totalIzin = 0;
+      let totalDL = 0;
+      let totalTAP = 0;
+
+      filtered.forEach(item => {
+        if (item.status.includes("Tepat Waktu")) {
+          totalHadir++;
+        } else if (item.status.includes("Terlambat")) {
+          totalHadir++;
+          const mnt = parseInt(item.status.replace(/[^0-9]/g, '')) || 0;
+          totalTerlambatMnt += mnt;
+        } else if (item.status === "Sakit") {
+          totalSakit++;
+        } else if (item.status === "Izin") {
+          totalIzin++;
+        } else if (item.status === "Dinas Luar") {
+          totalDL++;
+        } else if (item.status === "Alfa") {
+          totalAlfa++;
+        } else if (item.status === "TAP") {
+          totalTAP++;
+        }
+      });
+
+      document.getElementById('rekap-hadir').innerText = `${totalHadir} hari`;
+      document.getElementById('rekap-telat').innerText = `${totalTerlambatMnt} mnt`;
+      document.getElementById('rekap-alfa').innerText = `${totalAlfa} hari`;
+      document.getElementById('rekap-sakit').innerText = totalSakit;
+      document.getElementById('rekap-izin').innerText = totalIzin;
+      document.getElementById('rekap-dl').innerText = totalDL;
+      document.getElementById('rekap-tap').innerText = totalTAP;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Tidak ada rincian kehadiran pada periode ini.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const statusIsNormal = item.status.includes("Tepat Waktu");
+        const badgeColor = statusIsNormal 
+          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+          : "bg-amber-50 text-amber-700 border-amber-100";
+
+        return `
+          <div class="border border-slate-100 p-4 rounded-2xl flex flex-col gap-2.5 bg-slate-50/50">
+            <div class="flex justify-between items-center">
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">${item.hari}, ${item.tanggal}</h4>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeColor}">${item.status}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-slate-100 text-center">
+              <div>
+                <span class="text-[9px] font-bold text-slate-400 block uppercase">Masuk</span>
+                <span class="text-xs font-extrabold text-emerald-600 mt-0.5 block">${item.masuk} WIB</span>
+              </div>
+              <div>
+                <span class="text-[9px] font-bold text-slate-400 block uppercase">Pulang</span>
+                <span class="text-xs font-extrabold text-rose-600 mt-0.5 block">${item.pulang} WIB</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
   </script>
 </body>
