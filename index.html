@@ -1240,33 +1240,15 @@
           if (response.success) {
             showModal("Presensi Berhasil", `Berhasil melakukan presensi ${tipePresensi}!`, true);
             
-            // Perbarui antarmuka Lonceng
-            const btnLonceng = document.getElementById("btn-lonceng");
-            const iconLonceng = document.getElementById("icon-lonceng");
-            const textLonceng = document.getElementById("status-lonceng-text");
+            // ====== REAL-TIME UPDATE TRIGGER GLOBAL & INDIVIDUAL ======
+            // 1. Sinkronkan ulang jam realtime, teks lonceng, dan status tombol mandiri dari status spreadsheet hari ini
+            loadStatusPresensiHariIni();
 
-            if (tipePresensi === "masuk") {
-              textLonceng.innerText = "PULANG";
-              iconLonceng.className = "fa-solid fa-circle-check text-5xl text-emerald-600";
-              document.getElementById("jam-masuk-realtime").innerText = response.jam;
-            } else {
-              textLonceng.innerText = "DONE";
-              btnLonceng.disabled = true;
-              btnLonceng.classList.remove("hover:bg-emerald-200");
-              btnLonceng.classList.add("bg-slate-200", "text-slate-500", "cursor-not-allowed");
-              iconLonceng.className = "fa-solid fa-circle-check text-5xl";
-              document.getElementById("jam-pulang-realtime").innerText = response.jam;
-            }
-
-            // ====== REAL-TIME UPDATE TRIGGER ======
-            // 1. Perbarui daftar Live Kehadiran hari ini agar nama langsung muncul di Beranda bawah
+            // 2. Perbarui daftar Live Kehadiran hari ini agar nama langsung muncul di Beranda bawah
             loadLiveKehadiran();
 
-            // 2. Perbarui rekapitulasi / rincian harian guru jika sedang membuka tab riwayat
-            const riwayatSection = document.getElementById("menu-riwayat");
-            if (riwayatSection && !riwayatSection.classList.contains("hidden")) {
-              loadRekapitulasi();
-            }
+            // 3. Perbarui rekapitulasi / rincian harian guru di tab riwayat secara instan
+            loadRekapitulasi();
           } else {
             showModal("Gagal Presensi", response.message, false);
           }
@@ -1284,6 +1266,7 @@
       
       google.script.run
         .withSuccessHandler((response) => {
+          // Melindungi logika dari response kosong atau bukan bertipe array
           if (!response || !Array.isArray(response)) {
             return;
           }
@@ -1293,10 +1276,19 @@
           const iconLonceng = document.getElementById("icon-lonceng");
           const textLonceng = document.getElementById("status-lonceng-text");
 
+          // Reset status default tombol jika belum terdeteksi presensi hari ini
+          textLonceng.innerText = "MASUK";
+          btnLonceng.disabled = false;
+          btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
+          iconLonceng.className = "fa-solid fa-bell text-5xl bell-ring";
+          document.getElementById("jam-masuk-realtime").innerText = "--:--";
+          document.getElementById("jam-pulang-realtime").innerText = "--:--";
+
           if (userPres) {
             if (userPres.jamMasuk) {
               document.getElementById("jam-masuk-realtime").innerText = userPres.jamMasuk;
               textLonceng.innerText = "PULANG";
+              iconLonceng.className = "fa-solid fa-bell text-5xl bell-ring";
               if (userPres.status && userPres.status.includes("Dinas Luar")) {
                 document.getElementById("form-dl-presensi").classList.remove("hidden");
               }
@@ -1305,8 +1297,7 @@
               document.getElementById("jam-pulang-realtime").innerText = userPres.jamPulang;
               textLonceng.innerText = "DONE";
               btnLonceng.disabled = true;
-              btnLonceng.classList.remove("hover:bg-emerald-200");
-              btnLonceng.classList.add("bg-slate-200", "text-slate-500", "cursor-not-allowed");
+              btnLonceng.className = "w-32 h-32 bg-slate-200 text-slate-500 rounded-full flex flex-col items-center justify-center shadow-md cursor-not-allowed";
               iconLonceng.className = "fa-solid fa-circle-check text-5xl";
             }
           }
@@ -1477,6 +1468,7 @@
     }
 
     // DINAS LUAR (DL): AJUKAN & RENDER DATA
+    // Menampilkan form pengajuan dinas luar
     function bukaFormDL(show) {
       const form = document.getElementById("form-pengajuan-dl");
       if (show) form.classList.remove("hidden");
