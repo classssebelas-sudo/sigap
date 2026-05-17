@@ -197,10 +197,12 @@
           <div class="grid grid-cols-2 gap-4 w-full mt-6 pt-6 border-t border-slate-100">
             <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
               <span class="text-[10px] font-bold text-slate-400 uppercase">Jam Masuk (06.30)</span>
+              <!-- Jam Masuk Realtime yang akan muncul setelah presensi sukses -->
               <p id="jam-masuk-realtime" class="text-lg font-bold text-emerald-600 mt-1">--:--</p>
             </div>
             <div class="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
               <span class="text-[10px] font-bold text-slate-400 uppercase">Jam Pulang (15.00)</span>
+              <!-- Jam Pulang Realtime yang akan muncul setelah presensi sukses -->
               <p id="jam-pulang-realtime" class="text-lg font-bold text-rose-600 mt-1">--:--</p>
             </div>
           </div>
@@ -218,19 +220,6 @@
                 <input type="time" id="dl-jam-selesai" class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg">
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- CAMERA INTERACTIVE MODAL/WIDGET -->
-        <div id="camera-widget" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hidden flex-col items-center">
-          <h3 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera mr-1 text-emerald-600"></i> Ambil Foto Kehadiran</h3>
-          <div class="w-full max-w-sm aspect-video bg-slate-900 rounded-xl overflow-hidden relative mb-4">
-            <video id="video" class="w-full h-full object-cover" autoplay playsinline></video>
-            <canvas id="canvas" class="hidden"></canvas>
-          </div>
-          <div class="flex gap-3 w-full">
-            <button onclick="capturePhoto()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md transition-colors">Ambil Foto & Presensi</button>
-            <button onclick="tutupKamera()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold rounded-xl transition-colors">Batal</button>
           </div>
         </div>
 
@@ -640,19 +629,19 @@
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
 
     // State dinamis untuk penyimpanan lokal (ketika berjalan di simulator Canvas)
-    let localLivePresensiList = [
-      { 
-        nip: "19820512", 
-        nama: "Dadan Amirulloh, S.Pd.I", 
-        jabatan: "Guru Ahli Madya / Kepala Sekolah", 
-        jamMasuk: "06:22:15", 
-        jamPulang: "", 
-        status: "Hadir", 
-        foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200" 
-      }
-    ];
-
+    let localLivePresensiList = [];
     let localRincianPresensiMap = {};
+
+    // Helper untuk membuat tanggal berformat WIB (Jakarta) secara presisi dan kebal zona waktu mesin lokal
+    function getWIBDateString() {
+      const sekarang = new Date();
+      const utc = sekarang.getTime() + (sekarang.getTimezoneOffset() * 60000);
+      const wibDate = new Date(utc + (3600000 * 7)); // Tambah 7 jam untuk WIB
+      const yyyy = wibDate.getFullYear();
+      const mm = String(wibDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(wibDate.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
 
     // ==========================================
     // LAPISAN PENGAMAN PASIF (SILENT POLYFILL)
@@ -672,7 +661,6 @@
               return this;
             },
             loginUser: function(nip, password) {
-              // Menghubungi spreadsheet rill secara langsung via Google Visualization API (gviz)
               const sheetUrl = "https://docs.google.com/spreadsheets/d/1vFXwQAEcnzR70M9fvBbbU8S_JwU0FUT1ad6nbQhVjD4/gviz/tq?sheet=pegawai";
               
               fetch(sheetUrl)
@@ -733,16 +721,14 @@
               const jamStr = String(sekarang.getHours()).padStart(2, '0') + ":" + 
                             String(sekarang.getMinutes()).padStart(2, '0') + ":" + 
                             String(sekarang.getSeconds()).padStart(2, '0');
-              const tglStr = sekarang.toISOString().split('T')[0];
+              const tglStr = getWIBDateString();
               
-              // Simulasikan pendaftaran presensi secara lokal di simulator
               const currentUserData = JSON.parse(sessionStorage.getItem("sigap_user")) || {};
               const userNama = currentUserData.nama || "User SIGAP";
               const userJabatan = currentUserData.jabatan || "Pendidik";
               const userFoto = currentUserData.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
 
               if (tipe === "masuk") {
-                // Tambahkan atau perbarui list kehadiran hari ini
                 const existing = localLivePresensiList.find(p => p.nip === nip);
                 if (!existing) {
                   localLivePresensiList.push({
@@ -756,7 +742,6 @@
                   });
                 }
                 
-                // Tambahkan ke map rekapitulasi harian rincian
                 localRincianPresensiMap[tglStr] = {
                   tanggal: tglStr,
                   masuk: jamStr,
@@ -816,14 +801,13 @@
             getRekapPresensi: function(nip, bulan, tahun) {
               const sekarang = new Date();
               const formatBulan = String(sekarang.getMonth() + 1).padStart(2, '0');
-              const formatTahun = ClinicalYear = sekarang.getFullYear();
-              const tglHariIniStr = sekarang.toISOString().split('T')[0];
+              const formatTahun = sekarang.getFullYear();
+              const tglHariIniStr = getWIBDateString();
 
               const defaultRincian = [
                 { tanggal: `${formatTahun}-${formatBulan}-15`, masuk: "06:21:40", pulang: "15:02:11", status: "Hadir" }
               ];
 
-              // Cari apakah ada presensi hari ini di map lokal
               if (localRincianPresensiMap[tglHariIniStr]) {
                 const existingIndex = defaultRincian.findIndex(r => r.tanggal === tglHariIniStr);
                 if (existingIndex === -1) {
@@ -910,12 +894,10 @@
       if (cachedUser) {
         try {
           const parsedUser = JSON.parse(cachedUser);
-          // Validasi ketat jika sesi cache memiliki nama rill yang valid
           if (parsedUser && parsedUser.nip && parsedUser.nama && parsedUser.nama !== "-") {
             currentUser = parsedUser;
             initDashboard();
           } else {
-            // Bersihkan sesi rusak jika data cache tidak valid
             sessionStorage.removeItem("sigap_user");
           }
         } catch (e) {
@@ -1043,7 +1025,7 @@
 
       const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
                 Math.cos(phi1) * Math.cos(phi2) *
-                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+                String(Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2));
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
       return R * c; 
@@ -1260,6 +1242,18 @@
         jamSelesaiDl: document.getElementById("dl-jam-selesai").value
       };
 
+      // Memaksa pengisian jam real-time di UI secara instan demi fluiditas visual sebelum penarikan data selesai
+      const sekarang = new Date();
+      const jamMurniStr = String(sekarang.getHours()).padStart(2, '0') + ":" + 
+                          String(sekarang.getMinutes()).padStart(2, '0') + ":" + 
+                          String(sekarang.getSeconds()).padStart(2, '0');
+
+      if (tipePresensi === "masuk") {
+        document.getElementById("jam-masuk-realtime").innerText = jamMurniStr;
+      } else {
+        document.getElementById("jam-pulang-realtime").innerText = jamMurniStr;
+      }
+
       // Memanggil fungsi rill submitPresensi ke Google Sheets Apps Script
       google.script.run
         .withSuccessHandler((response) => {
@@ -1289,7 +1283,7 @@
 
     // CEK STATUS PRESENSI GURU HARI INI SAAT INIALISASI BERANDA
     function loadStatusPresensiHariIni() {
-      const hariIniStr = new Date().toISOString().split('T')[0];
+      const hariIniStr = getWIBDateString(); // Menggunakan converter WIB agar kebal terhadap timezone misalignments
       
       google.script.run
         .withSuccessHandler((response) => {
@@ -1335,7 +1329,7 @@
 
     // LIVE PRESENSI: Kumpulkan list pegawai yang sudah absen
     function loadLiveKehadiran() {
-      const hariIniStr = new Date().toISOString().split('T')[0];
+      const hariIniStr = getWIBDateString();
       
       // Ambil Total Pegawai Terlebih Dahulu
       google.script.run
@@ -1608,6 +1602,7 @@
       }
     }
 
+    // Mengirim pengajuan izin personal
     function kirimIzinPersonal(e) {
       e.preventDefault();
       setLoader(true);
