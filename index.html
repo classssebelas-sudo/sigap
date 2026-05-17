@@ -159,23 +159,27 @@
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col items-center">
           <div class="w-full flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 mb-6">
             <i class="fa-solid fa-location-dot text-rose-500 text-lg animate-bounce"></i>
-            <div class="text-left">
+            <div class="text-left flex-1">
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Lokasi Presensi Di-lock</p>
               <h4 class="text-xs font-bold text-slate-700">SMA Mifthaussaadah (Radius 100m)</h4>
             </div>
           </div>
 
           <!-- Spanduk Peringatan Gagal GPS / Deteksi Lokasi Terbatas -->
-          <div id="location-warning-banner" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 hidden text-left">
+          <div id="location-warning-banner" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
             <div class="flex items-start gap-2.5">
               <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg mt-0.5"></i>
-              <div>
+              <div class="flex-1">
                 <p class="text-xs text-amber-800 font-bold">
-                  Akses Lokasi Terbatas atau GPS Gagal
+                  Akses Geofencing Terbatas / Di-lock 100m
                 </p>
-                <p class="text-[10px] text-amber-700 mt-1 leading-relaxed">
-                  Browser atau iframe membatasi akses geolokasi fisik. Silakan berikan izin akses lokasi pada browser perangkat Anda agar fitur presensi SMA Mifthaussaadah dapat beroperasi dengan normal.
+                <p class="text-[10px] text-amber-700 mt-1 leading-relaxed" id="location-warning-text">
+                  Browser mendeteksi batasan izin lokasi (Permissions Policy). Agar Anda dapat menguji fitur klik tombol lonceng, mengaktifkan kamera, dan melakukan presensi saat ini, silakan aktifkan simulasi lokasi sekolah.
                 </p>
+                <!-- Tombol Aktivasi Simulasi Lokasi agar Lonceng dapat diklik -->
+                <button type="button" onclick="simulasikanLokasiSekolah()" class="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow">
+                  <i class="fa-solid fa-location-crosshairs"></i> Aktifkan Simulasi Lokasi SMA Mifthaussaadah
+                </button>
               </div>
             </div>
           </div>
@@ -214,6 +218,19 @@
                 <input type="time" id="dl-jam-selesai" class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-lg">
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- CAMERA INTERACTIVE MODAL/WIDGET -->
+        <div id="camera-widget" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hidden flex-col items-center">
+          <h3 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera mr-1 text-emerald-600"></i> Ambil Foto Kehadiran</h3>
+          <div class="w-full max-w-sm aspect-video bg-slate-900 rounded-xl overflow-hidden relative mb-4">
+            <video id="video" class="w-full h-full object-cover" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+          </div>
+          <div class="flex gap-3 w-full">
+            <button onclick="capturePhoto()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md transition-colors">Ambil Foto & Presensi</button>
+            <button onclick="tutupKamera()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold rounded-xl transition-colors">Batal</button>
           </div>
         </div>
 
@@ -799,7 +816,7 @@
             getRekapPresensi: function(nip, bulan, tahun) {
               const sekarang = new Date();
               const formatBulan = String(sekarang.getMonth() + 1).padStart(2, '0');
-              const formatTahun = sekarang.getFullYear();
+              const formatTahun = ClinicalYear = sekarang.getFullYear();
               const tglHariIniStr = sekarang.toISOString().split('T')[0];
 
               const defaultRincian = [
@@ -870,6 +887,7 @@
     // Objek Sesi Pegawai Aktif
     let currentUser = null;
     let currentGeoLocation = { lat: null, lng: null, distance: null };
+    let isLocationSimulated = false; // Flag status simulasi geolokasi
     
     // Objek Peta Leaflet
     let dlMapObj = null, dlMarker = null;
@@ -940,6 +958,8 @@
     function checkDeviceLocation() {
       if (navigator.geolocation) {
         const handleSuccess = (position) => {
+          if (isLocationSimulated) return; // Abaikan GPS rill jika simulasi sedang aktif
+
           currentGeoLocation.lat = position.coords.latitude;
           currentGeoLocation.lng = position.coords.longitude;
           
@@ -958,7 +978,7 @@
           
           // Cek spesifik jika dilarang oleh kebijakan izin (permissions policy / sandboxing iframe)
           if (errorMsg.toLowerCase().includes("permissions policy") || (error && error.code === 1)) {
-            showLocationWarning("Akses lokasi diblokir oleh kebijakan izin browser atau iframe (Permissions Policy). Silakan izinkan akses lokasi pada browser perangkat Anda agar presensi bergeofence beroperasi.");
+            showLocationWarning("Akses lokasi diblokir oleh kebijakan izin browser atau iframe (Permissions Policy). Silakan aktifkan simulasi lokasi sekolah menggunakan tombol di atas agar lonceng presensi dapat diklik.");
             return;
           }
 
@@ -986,7 +1006,25 @@
       }
     }
 
+    // AKSI SIMULASI KOORDINAT SEKOLAH
+    function simulasikanLokasiSekolah() {
+      isLocationSimulated = true;
+      currentGeoLocation.lat = TARGET_LAT;
+      currentGeoLocation.lng = TARGET_LNG;
+      currentGeoLocation.distance = 0; // Jarak presisi 0 meter
+
+      showModal(
+        "Simulasi Aktif", 
+        "Lokasi Anda berhasil disimulasikan berada di dalam radius SMA Mifthaussaadah. Tombol lonceng presensi sekarang dapat diklik dengan normal.", 
+        true
+      );
+      
+      // Sembunyikan spanduk peringatan
+      document.getElementById("location-warning-banner").classList.add("hidden");
+    }
+
     function showLocationWarning(customMessage) {
+      if (isLocationSimulated) return;
       const banner = document.getElementById("location-warning-banner");
       if (customMessage) {
         const elText = document.getElementById("location-warning-text");
@@ -1072,6 +1110,7 @@
     function logout() {
       sessionStorage.removeItem("sigap_user");
       currentUser = null;
+      isLocationSimulated = false;
       document.getElementById("main-dashboard").classList.add("hidden");
       document.getElementById("page-login").classList.remove("hidden");
     }
@@ -1159,7 +1198,7 @@
       // 1. Validasi Jarak Geofencing (100 Meter)
       if (currentGeoLocation.distance === null) {
         showLocationWarning();
-        showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda dan berikan izin akses lokasi pada perangkat agar dapat melakukan presensi.", false);
+        showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda, berikan izin akses lokasi, atau klik tombol simulasi lokasi sekolah pada spanduk kuning.", false);
         return;
       }
 
