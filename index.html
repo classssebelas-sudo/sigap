@@ -223,7 +223,7 @@
           </div>
         </div>
 
-        <!-- CAMERA INTERACTIVE MODAL/WIDGET -->
+        <!-- CAMERA INTERACTIVE WIDGET -->
         <div id="camera-widget" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hidden flex-col items-center">
           <h3 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera mr-1 text-emerald-600"></i> Ambil Foto Kehadiran</h3>
           <div class="w-full max-w-sm aspect-video bg-slate-900 rounded-xl overflow-hidden relative mb-4">
@@ -637,7 +637,7 @@
   <!-- SCRIPT LOGIKA APLIKASI -->
   <script>
     // Konfigurasi Kunci Geofencing
-    const TARGET_LAT = -6.3562831731423195,; 
+    const TARGET_LAT = -6.3562831731423195; 
     const TARGET_LNG = 106.5287926364578;
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
 
@@ -719,7 +719,7 @@
                     }
                     
                     if (matchedUser) {
-                      this._successHandler({ success: true, user: matchedUser });
+                      window.google.script.run._successHandler({ success: true, user: matchedUser });
                     } else {
                       fallbackLocalLogin(nip, password);
                     }
@@ -790,7 +790,7 @@
               }
 
               setTimeout(() => {
-                this._successHandler({
+                window.google.script.run._successHandler({
                   success: true,
                   jam: jamStr,
                   status: "Hadir"
@@ -799,24 +799,24 @@
             },
             submitDinasLuar: function(nip, tipeDL, lokasi, mulaiTgl, selesaiTgl, keterangan) {
               setTimeout(() => {
-                this._successHandler({ success: true, message: "Pengajuan Dinas Luar berhasil dikirim." });
+                window.google.script.run._successHandler({ success: true, message: "Pengajuan Dinas Luar berhasil dikirim." });
               }, 300);
             },
             getDinasLuar: function(nip, bulan, tahun) {
               setTimeout(() => {
-                this._successHandler([
+                window.google.script.run._successHandler([
                   { id: "DL-01", tipe: "Dinas Luar Full", lokasi: "Dinas Pendidikan Provinsi Jabar", mulai: "2026-05-18", selesai: "2026-05-18", keterangan: "Rakor Kurikulum Merdeka", status: "Disetujui" }
                 ]);
               }, 300);
             },
             submitIzinPersonal: function(nip, jenisIzin, tanggal, jamTibaPulang, keterangan) {
               setTimeout(() => {
-                this._successHandler({ success: true, message: "Pengajuan izin berhasil dikirim." });
+                window.google.script.run._successHandler({ success: true, message: "Pengajuan izin berhasil dikirim." });
               }, 300);
             },
             getIzinPersonal: function(nip, bulan, tahun) {
               setTimeout(() => {
-                this._successHandler([
+                window.google.script.run._successHandler([
                   { id: "IZ-01", jenis: "Izin Terlambat Masuk", tanggal: "2026-05-12", jam: "08:15", keterangan: "Menghadiri imunisasi anak balita", status: "Disetujui" }
                 ]);
               }, 300);
@@ -858,7 +858,7 @@
               }
 
               setTimeout(() => {
-                this._successHandler({
+                window.google.script.run._successHandler({
                   success: true,
                   rekap: { alfa: 0, telat: 12, tap: 0, cuti: 0, izin: 1, dl: 1, wfh: 0 },
                   rincian: defaultRincian
@@ -867,12 +867,12 @@
             },
             saveAlamatAkun: function(nip, alamat, lat, lng) {
               setTimeout(() => {
-                this._successHandler({ success: true, message: "Alamat tempat tinggal berhasil diperbarui!" });
+                window.google.script.run._successHandler({ success: true, message: "Alamat tempat tinggal berhasil diperbarui!" });
               }, 300);
             },
             getAlamatAkun: function(nip) {
               setTimeout(() => {
-                this._successHandler({
+                window.google.script.run._successHandler({
                   alamat: "SMA Mifthaussaadah, Parung Panjang",
                   lat: TARGET_LAT,
                   lng: TARGET_LNG
@@ -1503,7 +1503,7 @@
     }
 
     // MEMANGGIL ENDPOINT PENCARIAN ALAMAT (NOMINATIM API)
-    function cariLocationsPeta(tipe) {
+    function cariLokasiPeta(tipe) {
       const query = document.getElementById(tipe === 'dl' ? "dl-search-lokasi" : "akun-search-alamat").value;
       if (!query) return;
 
