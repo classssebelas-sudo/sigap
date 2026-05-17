@@ -668,6 +668,7 @@
               return this;
             },
             loginUser: function(nip, password) {
+              // Menghubungi spreadsheet rill secara langsung via Google Visualization API (gviz)
               const sheetUrl = "https://docs.google.com/spreadsheets/d/1vFXwQAEcnzR70M9fvBbbU8S_JwU0FUT1ad6nbQhVjD4/gviz/tq?sheet=pegawai";
               
               fetch(sheetUrl)
@@ -809,7 +810,6 @@
               }, 300);
             },
             getRekapPresensi: function(nip, bulan, tahun) {
-              // Hasilkan rincian secara dinamis dengan mengikutsertakan input presensi terbaru
               const sekarang = new Date();
               const formatBulan = String(sekarang.getMonth() + 1).padStart(2, '0');
               const formatTahun = sekarang.getFullYear();
@@ -1271,7 +1271,8 @@
             return;
           }
 
-          const userPres = response.find(p => p && p.nip && p.nip.toString() === currentUser.nip.toString());
+          // PERBAIKAN: Membaca NIP secara dinamis dari guru yang sedang login aktif (currentUser.nip)
+          const userPres = response.find(p => p && p.nip && String(p.nip).trim() === String(currentUser.nip).trim());
           const btnLonceng = document.getElementById("btn-lonceng");
           const iconLonceng = document.getElementById("icon-lonceng");
           const textLonceng = document.getElementById("status-lonceng-text");
@@ -1570,6 +1571,7 @@
       else form.classList.add("hidden");
     }
 
+    // Mengatur input jam target terlambat/pulang cepat
     function toggleIzinTimeInput() {
       const jenis = document.getElementById("izin-jenis").value;
       const lbl = document.getElementById("lbl-jam-izin");
