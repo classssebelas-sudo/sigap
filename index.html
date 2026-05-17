@@ -151,9 +151,9 @@
           <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
           <img id="p-foto" src="" alt="Foto Pegawai" class="w-20 h-20 rounded-2xl object-cover border-2 border-white/20 shadow-md">
           <div class="z-10 flex-1">
-            <p class="text-xs text-emerald-200 font-semibold tracking-wider uppercase">Selamat Datang</p>
-            <h2 id="p-nama" class="text-lg font-bold mt-0.5 leading-tight">-</h2>
-            <p id="p-jabatan" class="text-xs text-emerald-100 font-medium mt-1">-</p>
+            <p class="text-xs text-emerald-200 font-semibold tracking-wider uppercase text-left">Selamat Datang</p>
+            <h2 id="p-nama" class="text-lg font-bold mt-0.5 leading-tight text-left">-</h2>
+            <p id="p-jabatan" class="text-xs text-emerald-100 font-medium mt-1 text-left">-</p>
           </div>
         </div>
 
@@ -166,7 +166,7 @@
         <!-- Area Presensi Utama -->
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col items-center">
           
-          <!-- Indikator GPS Asli (MENGGANTIKAN SPANDUK SIMULASI) -->
+          <!-- Indikator GPS Asli -->
           <div id="gps-status-container" class="w-full flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-6 transition-all">
             <i id="gps-status-icon" class="fa-solid fa-location-crosshairs text-amber-500 text-lg animate-spin"></i>
             <div class="text-left flex-1">
@@ -215,8 +215,8 @@
         <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
           <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 class="text-sm font-extrabold text-slate-800">Live Presensi Kehadiran</h3>
-              <p id="live-tanggal" class="text-[11px] text-slate-500 mt-0.5">-</p>
+              <h3 class="text-sm font-extrabold text-slate-800 text-left">Live Presensi Kehadiran</h3>
+              <p id="live-tanggal" class="text-[11px] text-slate-500 mt-0.5 text-left">-</p>
             </div>
             <span class="bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1.5 rounded-lg">
               Total Pegawai: <span id="live-total-pegawai">0</span>
@@ -543,22 +543,27 @@
     let currentUser = null;
     let watchId = null; // Menyimpan ID tracker Geolocation
 
-    // Database Lokal (Memory Session)
-    const database = {
-      pegawai: {
-        "19890101": {
-          nip: "19890101",
-          nama: "Drs. H. Ahmad Fauzi, M.Pd.",
-          jabatan: "Kepala Sekolah / Guru Utama",
-          foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=60"
-        },
-        "19920512": {
-          nip: "19920512",
-          nama: "Siti Rahmawati, S.Pd.",
-          jabatan: "Wakasek Kurikulum / Guru Fisika",
-          foto: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=60"
-        }
+    // Database Pengguna / Guru (Diambil dinamis dari Sheets)
+    let dynamicPegawai = {};
+
+    // Database Pegawai Lokal (Fallback jika koneksi spreadsheet gagal atau belum dikonfigurasikan)
+    const localFallbackPegawai = {
+      "19890101": {
+        nip: "19890101",
+        nama: "Drs. H. Ahmad Fauzi, M.Pd. (Lokal)",
+        jabatan: "Kepala Sekolah / Guru Utama",
+        foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=60"
       },
+      "19920512": {
+        nip: "19920512",
+        nama: "Siti Rahmawati, S.Pd. (Lokal)",
+        jabatan: "Wakasek Kurikulum / Guru Fisika",
+        foto: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=60"
+      }
+    };
+
+    // Database Simulasi Logika Menu Lainnya (Memory Session)
+    const database = {
       liveKehadiran: [
         { nama: "Budi Santoso, S.Kom", jabatan: "Guru TI", jam: "06:15", status: "Hadir", foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=60" },
         { nama: "Rina Wijaya, S.Pd", jabatan: "Guru Matematika", jam: "06:22", status: "Hadir", foto: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=60" },
@@ -590,7 +595,7 @@
       const sekarang = new Date();
       const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       const tanggalString = sekarang.toLocaleDateString('id-ID', optionsTanggal);
-      const jamString = sekarang.toTimeString().split(' ')[0];
+      const jamString = ClinicalFormatTime(sekarang);
 
       const elTanggal = document.getElementById('realtime-tanggal');
       const elJam = document.getElementById('realtime-jam');
@@ -601,25 +606,51 @@
       if (elLiveTanggal) elLiveTanggal.innerText = tanggalString;
     }
 
+    function ClinicalFormatTime(date) {
+      return date.toTimeString().split(' ')[0];
+    }
+
     // ==========================================
-    // LOGIKA GPS ASLI (MURNI TANPA SIMULASI)
+    // AMBIL DATA GURU SECARA DINAMIS DARI SHEET
+    // ==========================================
+    async function fetchGuruFromSheets() {
+      if (!SPREADSHEET_WEB_APP_URL || SPREADSHEET_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+        console.warn("Spreadsheet URL belum diisi. Menggunakan database guru lokal.");
+        return null;
+      }
+
+      try {
+        // Melakukan request GET dengan parameter action=get_users
+        const response = await fetch(`${SPREADSHEET_WEB_APP_URL}?action=get_users`);
+        const result = await response.json();
+        
+        if (result && result.status === "success" && result.users) {
+          return result.users;
+        }
+      } catch (error) {
+        console.error("Gagal menarik basis data guru dari Google Sheets:", error);
+      }
+      return null;
+    }
+
+    // ==========================================
+    // LOGIKA GPS PERANGKAT ASLI
     // ==========================================
     function setupRealGPS() {
       if (navigator.geolocation) {
-        // Melacak pergerakan GPS secara kontinu (WatchPosition)
         watchId = navigator.geolocation.watchPosition(
           (position) => {
             userLocation = [position.coords.latitude, position.coords.longitude];
             checkGeofenceDistance();
           },
           (error) => {
-            console.warn("GPS Gagal didapatkan:", error.message);
-            updateGPSStatus("error", `GPS Error: ${error.message}. Mohon aktifkan lokasi.`);
+            console.warn("Satelit GPS Gagal dikoordinasikan:", error.message);
+            updateGPSStatus("error", `GPS Error: Perangkat belum mengizinkan akses lokasi.`);
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
         );
       } else {
-        updateGPSStatus("error", "Perangkat Anda tidak mendukung Geolocation.");
+        updateGPSStatus("error", "Perangkat Anda tidak mendukung modul Geolocation.");
       }
     }
 
@@ -635,7 +666,7 @@
                 Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-      return R * c; // Hasil dalam meter
+      return R * c; 
     }
 
     function checkGeofenceDistance() {
@@ -646,14 +677,12 @@
       const helperText = document.getElementById('btn-helper-text');
 
       if (jarak <= 100) {
-        // Didalam area geofence
         updateGPSStatus("success", `Lokasi Terverifikasi (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
         btnLonceng.disabled = false;
         btnLonceng.className = "w-32 h-32 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex flex-col items-center justify-center shadow-lg hover:shadow-emerald-200/50 transition-all transform hover:scale-105 active:scale-95";
         helperText.className = "text-[10px] text-emerald-600 mt-4 text-center font-bold";
         helperText.innerText = "Sinyal GPS Terkunci. Silakan tekan tombol Lonceng untuk presensi.";
       } else {
-        // Diluar area geofence
         updateGPSStatus("outside", `Diluar Jangkauan (Berjarak ${Math.round(jarak)}m dari Sekolah)`);
         btnLonceng.disabled = true;
         btnLonceng.className = "w-32 h-32 bg-slate-100 text-slate-400 rounded-full flex flex-col items-center justify-center shadow-lg transition-all transform opacity-60 cursor-not-allowed";
@@ -666,6 +695,8 @@
       const container = document.getElementById('gps-status-container');
       const icon = document.getElementById('gps-status-icon');
       const text = document.getElementById('gps-status-text');
+
+      if (!container || !icon || !text) return;
 
       if (type === "success") {
         container.className = "w-full flex items-center gap-3 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl mb-6 transition-all";
@@ -683,11 +714,10 @@
     }
 
     // ==========================================
-    // INTEGRASI DATABASE GOOGLE SPREADSHEET (APPS SCRIPT)
+    // LOGIKA INTEGRASI PENYIMPANAN SPREADSHEET
     // ==========================================
     async function kirimPresensiKeSpreadsheet(nip, nama, jabatan, tanggal, jam, tipe, koordinat, fotoBase64) {
       if (!SPREADSHEET_WEB_APP_URL || SPREADSHEET_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
-        console.warn("Spreadsheet Web App URL belum diisi. Data hanya akan disimpan secara lokal.");
         return { success: true, localOnly: true };
       }
 
@@ -703,15 +733,14 @@
       };
 
       try {
-        const response = await fetch(SPREADSHEET_WEB_APP_URL, {
+        await fetch(SPREADSHEET_WEB_APP_URL, {
           method: "POST",
-          mode: "no-cors", // Mode no-cors mengabaikan proteksi CORS Apps Script, namun data terkirim sempurna.
+          mode: "no-cors", 
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(payload)
         });
-        
         return { success: true };
       } catch (error) {
         console.error("Gagal mengirim presensi ke Google Sheets:", error);
@@ -719,7 +748,7 @@
       }
     }
 
-    // CUSTOM MODAL POP-UP
+    // MODAL POP-UP CUSTOM
     function showCustomModal(type, title, message) {
       const modal = document.getElementById('custom-modal');
       const iconContainer = document.getElementById('modal-icon-container');
@@ -757,39 +786,64 @@
       }
     }
 
-    // LOGIKA PROSES LOGIN
-    function handleLogin(event) {
+    // ==========================================
+    // LOGIKA LOGIN DENGAN PENGAMBILAN DATA GURU DARI SPREADSHEET
+    // ==========================================
+    async function handleLogin(event) {
       event.preventDefault();
       const nip = document.getElementById('login-nip').value.trim();
       const pass = document.getElementById('login-password').value;
 
-      showLoading(true, "Memvalidasi Akredititas...");
+      showLoading(true, "Menghubungkan ke Database Google Sheets...");
 
-      setTimeout(() => {
-        showLoading(false);
-        if (database.pegawai[nip]) {
-          currentUser = database.pegawai[nip];
-          
-          document.getElementById('p-nama').innerText = currentUser.nama;
-          document.getElementById('p-jabatan').innerText = currentUser.jabatan;
-          document.getElementById('p-foto').src = currentUser.foto;
+      // Tarik database guru terbaru dari Spreadsheet secara langsung saat guru klik Login
+      const fetchedGuru = await fetchGuruFromSheets();
+      
+      showLoading(false);
 
-          document.getElementById('page-login').classList.add('hidden');
-          document.getElementById('main-dashboard').classList.remove('hidden');
+      let targetUser = null;
+      let usingSheets = false;
 
-          renderLivePresensi();
-          renderRiwayatList();
-          filterDinasLuar();
-          filterIzinPersonal();
+      if (fetchedGuru && Object.keys(fetchedGuru).length > 0) {
+        // Berhasil mendapatkan data dari Google Sheet
+        dynamicPegawai = fetchedGuru;
+        usingSheets = true;
+      } else {
+        // Fallback jika Google Sheets kosong atau gagal diakses
+        dynamicPegawai = localFallbackPegawai;
+        console.warn("Menggunakan data guru lokal sementara.");
+      }
+
+      // Validasi akun guru yang dicari
+      if (dynamicPegawai[nip]) {
+        targetUser = dynamicPegawai[nip];
+        currentUser = targetUser;
+        
+        // Atur Informasi Tampilan Profil Guru Utama di Dasbor
+        document.getElementById('p-nama').innerText = currentUser.nama;
+        document.getElementById('p-jabatan').innerText = currentUser.jabatan;
+        document.getElementById('p-foto').src = currentUser.foto;
+
+        document.getElementById('page-login').classList.add('hidden');
+        document.getElementById('main-dashboard').classList.remove('hidden');
+
+        renderLivePresensi();
+        renderRiwayatList();
+        filterDinasLuar();
+        filterIzinPersonal();
+
+        if (usingSheets) {
+          showCustomModal("success", "Login Berhasil", `Selamat Datang, data akun Anda terverifikasi dinamis dari Google Sheets.`);
         } else {
-          showCustomModal("error", "Akses Ditolak", "NIP atau password Anda salah. Silakan coba 19890101 atau 19920512.");
+          showCustomModal("success", "Login Mode Offline", `Data terverifikasi via basis data cadangan lokal.`);
         }
-      }, 1000);
+      } else {
+        showCustomModal("error", "Guru Tidak Terdaftar", "NIP yang dimasukkan belum terdaftar dalam basis data Google Sheets kami.");
+      }
     }
 
-    // LOGIKA PROSES LOGOUT
     function logout() {
-      showLoading(true, "Menghapus Sesi...");
+      showLoading(true, "Mengakhiri Sesi...");
       setTimeout(() => {
         currentUser = null;
         document.getElementById('main-dashboard').classList.add('hidden');
@@ -801,7 +855,7 @@
       }, 800);
     }
 
-    // SWITCH MENU
+    // SWITCH MENU UTAMA
     function switchMenu(targetMenu) {
       const menus = ['beranda', 'dl', 'izin', 'riwayat'];
       menus.forEach(menu => {
@@ -825,7 +879,7 @@
       tutupKamera();
     }
 
-    // INTERAKSI WEB CAMERA
+    // KAMERA GURU ABSENSI
     async function bukaKameraPresensi() {
       if (!userLocation) {
         showCustomModal("error", "Akses Terkunci", "Perangkat Anda belum mendeteksi koordinat GPS valid.");
@@ -864,7 +918,6 @@
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Konversi Gambar ke DataURL Base64 untuk dikirim ke Spreadsheet
       const fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
       showLoading(true, "Mengirim Data Presensi...");
@@ -877,7 +930,6 @@
       const isMasuk = document.getElementById('status-lonceng-text').innerText === "MASUK";
       const tipeAbsen = isMasuk ? "MASUK" : "PULANG";
 
-      // Kirim data ke Google Sheets secara real-time
       kirimPresensiKeSpreadsheet(
         currentUser.nip,
         currentUser.nama,
@@ -961,8 +1013,8 @@
         <div class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
           <img src="${item.foto}" class="w-10 h-10 rounded-xl object-cover" alt="Foto">
           <div class="flex-1 min-w-0">
-            <h4 class="text-xs font-bold text-slate-800 truncate">${item.nama}</h4>
-            <p class="text-[10px] text-slate-500 font-semibold truncate">${item.jabatan}</p>
+            <h4 class="text-xs font-bold text-slate-800 truncate text-left">${item.nama}</h4>
+            <p class="text-[10px] text-slate-500 font-semibold truncate text-left">${item.jabatan}</p>
           </div>
           <div class="text-right">
             <span class="text-[10px] font-bold text-emerald-600 block bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">${item.status}</span>
@@ -1133,12 +1185,12 @@
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col gap-2">
             <div class="flex justify-between items-start">
               <div>
-                <h4 class="text-xs font-bold text-slate-800">${item.tipe}</h4>
-                <p class="text-[9px] text-slate-400 mt-0.5">${item.tglMulai} s/d ${item.tglSelesai}</p>
+                <h4 class="text-xs font-bold text-slate-800 text-left">${item.tipe}</h4>
+                <p class="text-[9px] text-slate-400 mt-0.5 text-left">${item.tglMulai} s/d ${item.tglSelesai}</p>
               </div>
               ${statusBadge}
             </div>
-            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">${item.keterangan}</p>
+            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-left">${item.keterangan}</p>
           </div>
         `;
       }).join('');
@@ -1237,18 +1289,18 @@
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex flex-col gap-2">
             <div class="flex justify-between items-start">
               <div>
-                <h4 class="text-xs font-bold text-slate-800">${item.jenis}</h4>
-                <p class="text-[9px] text-slate-400 mt-0.5">Tanggal: ${item.tanggal} | Jam: ${item.jam} WIB</p>
+                <h4 class="text-xs font-bold text-slate-800 text-left">${item.jenis}</h4>
+                <p class="text-[9px] text-slate-400 mt-0.5 text-left">Tanggal: ${item.tanggal} | Jam: ${item.jam} WIB</p>
               </div>
               ${statusBadge}
             </div>
-            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">${item.keterangan}</p>
+            <p class="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-left">${item.keterangan}</p>
           </div>
         `;
       }).join('');
     }
 
-    // RIWAYAT & REKAPITULASI
+    // RIWAYAT & REKAPITULASI PRIBADI
     function renderRiwayatList() {
       const container = document.getElementById('rincian-harian-list');
       const tahun = document.getElementById('filter-riwayat-tahun').value;
@@ -1312,7 +1364,7 @@
           <div class="border border-slate-100 p-4 rounded-2xl flex flex-col gap-2.5 bg-slate-50/50">
             <div class="flex justify-between items-center">
               <div>
-                <h4 class="text-xs font-bold text-slate-800">${item.hari}, ${item.tanggal}</h4>
+                <h4 class="text-xs font-bold text-slate-800 text-left">${item.hari}, ${item.tanggal}</h4>
               </div>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeColor}">${item.status}</span>
             </div>
