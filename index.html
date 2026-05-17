@@ -1086,7 +1086,7 @@
       const nip = document.getElementById('login-nip').value.trim();
       const pass = document.getElementById('login-password').value;
 
-      showLoading(true, "Sinkronisasi Akun dari Google Sheets...");
+      showLoading(true, "Sinkronisasi Akun...");
 
       const fetchedGuru = await fetchGuruFromSheets();
       
@@ -1121,7 +1121,7 @@
         filterIzinPersonal();
 
         if (usingSheets) {
-          showCustomModal("success", "Sesi Terbuka (Online)", `Selamat bekerja, ${currentUser.nama}. Data profil Anda sinkron dengan Google Sheets.`);
+          showCustomModal("success", "Sesi Terbuka (Online)", `Selamat bekerja, ${currentUser.nama}. Data profil Anda sinkron.`);
         } else {
           showCustomModal("success", "Sesi Terbuka (Lokal)", `Berhasil masuk menggunakan basis data cadangan lokal.`);
         }
@@ -1263,7 +1263,7 @@
               status: "Hadir Tepat Waktu"
             });
 
-            let modalMsg = "Presensi kehadiran MASUK berhasil dikirim ke Google Sheets.";
+            let modalMsg = "Presensi kehadiran MASUK berhasil dikirim.";
             if (res.localOnly) {
               modalMsg = "Presensi MASUK berhasil disimpan lokal! (Konfigurasikan Apps Script untuk integrasi Spreadsheet penuh).";
             }
@@ -1278,7 +1278,7 @@
               database.riwayatPresensi[0].pulang = jamSekarang;
             }
 
-            let modalMsg = "Presensi kehadiran PULANG berhasil disimpan ke Google Sheets.";
+            let modalMsg = "Presensi kehadiran PULANG berhasil disimpan.";
             if (res.localOnly) {
               modalMsg = "Presensi PULANG berhasil disimpan lokal! (Konfigurasikan Apps Script untuk integrasi Spreadsheet penuh).";
             }
