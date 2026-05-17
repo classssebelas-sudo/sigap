@@ -637,7 +637,7 @@
   <!-- SCRIPT LOGIKA APLIKASI -->
   <script>
     // Konfigurasi Kunci Geofencing
-    const TARGET_LAT = -6.3562831731423195; 
+    const TARGET_LAT = -6.3562831731423195,; 
     const TARGET_LNG = 106.5287926364578;
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
 
@@ -1218,7 +1218,7 @@
     let videoStream = null;
     function bukaKameraPresensi() {
       // 1. Validasi Jarak Geofencing (100 Meter)
-      if (currentGeoLocation.distance === null) {
+      if (currentGeoLocation.distance === null || isNaN(currentGeoLocation.distance)) {
         showLocationWarning();
         showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda, berikan izin akses lokasi, atau klik tombol simulasi lokasi sekolah pada spanduk kuning.", false);
         return;
@@ -1503,7 +1503,7 @@
     }
 
     // MEMANGGIL ENDPOINT PENCARIAN ALAMAT (NOMINATIM API)
-    function cariLokasiPeta(tipe) {
+    function cariLocationsPeta(tipe) {
       const query = document.getElementById(tipe === 'dl' ? "dl-search-lokasi" : "akun-search-alamat").value;
       if (!query) return;
 
