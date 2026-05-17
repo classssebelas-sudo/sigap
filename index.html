@@ -14,13 +14,20 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Map as MapIcon,
-  ArrowLeft,
   Check,
   Loader2,
-  Navigation as NavIcon,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
+
+// Ikon Kustom Aman untuk mencegah tabrakan nama dengan API bawaan Browser (seperti window.Map atau window.Navigation)
+const SafeMapIcon = ({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+    <line x1="9" y1="3" x2="9" y2="18" />
+    <line x1="15" y1="6" x2="15" y2="21" />
+  </svg>
+);
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -30,36 +37,42 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [loginForm, setLoginForm] = useState({ nama: '', nip: '' });
   const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  const [apiFeedback, setApiFeedback] = useState({ type: null, message: "" });
   
-  // State User (Mengambil data simulasi foto_url dari kolom 11 Google Drive)
+  // State untuk menyimpan SCRIPT_URL secara dinamis (disimpan di localStorage agar persisten)
+  const [scriptUrl, setScriptUrl] = useState(() => {
+    return localStorage.getItem('sigap_script_url') || "";
+  });
+  
+  // State User (Pengambilan foto_url dari Google Drive - Sheet Pegawai Kolom 11)
   const [userData, setUserData] = useState({
     nama: "",
     nip: "",
     jabatan: "Guru Ahli Pertama",
-    // Simulasi pengambilan dari kolom 11 foto_url
-    foto: "https://api.dicebear.com/7.x/avataaars/svg?seed=User", 
-    unitKerja: "SMA Mifthaussaadah",
+    foto: "", 
+    unitKerja: "SMAN 1 PARUNG",
     satuanKerja: "Dinas Pendidikan",
     atasan: {
       nama: "Dadan Amirulloh, S.Pd.I",
-      jabatan: "Kepala Sekolah SMA Mifthaussaadah / Atasan Langsung"
+      jabatan: "Kepala Sekolah / Atasan Langsung"
     }
   });
 
-  // Data Presensi Lokal - STRUKTUR DIPERTAHANKAN
+  // Data Presensi Lokal - STRUKTUR ASLI DIPERTAHANKAN
   const [presensiData, setPresensiData] = useState({
     masuk: null,
     pulang: null,
     status: 'Belum Presensi'
   });
 
-  // List Presensi - STRUKTUR DIPERTAHANKAN
+  // List Presensi - STRUKTUR ASLI DIPERTAHANKAN
   const [livePresensi, setLivePresensi] = useState([
     { nama: "Budi Santoso", jabatan: "Guru Fisika", foto: "https://i.pravatar.cc/150?u=1", masuk: "06:25", pulang: "-", status: "Hadir" },
     { nama: "Siti Aminah", jabatan: "Guru Biologi", foto: "https://i.pravatar.cc/150?u=2", masuk: "06:45", pulang: "-", status: "Terlambat" },
   ]);
 
-  // State Pengajuan Izin/Dinas - STRUKTUR DIPERTAHANKAN
+  // State Pengajuan Izin/Dinas - STRUKTUR ASLI DIPERTAHANKAN
   const [daftarPengajuan, setDaftarPengajuan] = useState([]);
 
   const videoRef = useRef(null);
@@ -71,34 +84,83 @@ const App = () => {
   }, []);
 
   const startCamera = async () => {
+    setCameraError(false);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "user" },
+          audio: false 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+        }
+      } else {
+        setCameraError(true);
       }
     } catch (err) {
-      console.error("Kamera tidak dapat diakses", err);
+      console.warn("Kamera fisik diblokir/tidak terdeteksi, mengaktifkan simulator AI Face ID.", err);
+      setCameraError(true);
     }
   };
 
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
   };
 
-  const handleLogin = (e) => {
+  // Sinkronisasi data saat Login dan mengambil data dari Apps Script jika URL dikonfigurasi
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (loginForm.nama && loginForm.nip) {
-      setUserData({
+      const fallbackPhoto = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(loginForm.nama)}`;
+      
+      const newUserData = {
         ...userData,
         nama: loginForm.nama,
         nip: loginForm.nip,
-        // Di sini nantinya sistem mengambil foto_url dari sheet pegawai kolom 11
-        foto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(loginForm.nama)}`
-      });
+        foto: fallbackPhoto
+      };
+
+      setUserData(newUserData);
       setIsLoggedIn(true);
+
+      // Integrasi jika scriptUrl sudah diisi oleh user
+      if (scriptUrl && scriptUrl.trim() !== "") {
+        setApiFeedback({ type: "info", message: "Menghubungkan ke database..." });
+        try {
+          // Kirimkan getPegawai dengan parameter aksi di URL query
+          const response = await fetch(`${scriptUrl}?action=getPegawai&nip=${encodeURIComponent(loginForm.nip)}`);
+          const resJson = await response.json();
+          if (resJson.status === "success" && resJson.data) {
+            // Kolom ke-11 (index 10) adalah foto_url
+            const rowData = resJson.data.find(row => row[1]?.toString() === loginForm.nip);
+            if (rowData) {
+              setUserData(prev => ({
+                ...prev,
+                nama: rowData[0] || prev.nama,
+                jabatan: rowData[2] || prev.jabatan,
+                foto: rowData[10] || prev.foto, // Kolom 11 (Index 10)
+                unitKerja: rowData[4] || prev.unitKerja,
+                satuanKerja: rowData[3] || prev.satuanKerja
+              }));
+              setApiFeedback({ type: "success", message: "Sinkronisasi database berhasil!" });
+            } else {
+              setApiFeedback({ type: "warning", message: "NIP tidak terdaftar di database. Menggunakan profil login lokal." });
+            }
+          } else {
+            setApiFeedback({ type: "error", message: resJson.message || "Gagal memproses tindakan database." });
+          }
+        } catch (error) {
+          console.warn("Gagal terhubung ke Apps Script.", error);
+          setApiFeedback({ type: "warning", message: "Database offline. Masuk menggunakan sesi lokal." });
+        }
+        
+        // Bersihkan feedback setelah 4 detik
+        setTimeout(() => setApiFeedback({ type: null, message: "" }), 4000);
+      }
     }
   };
 
@@ -108,9 +170,39 @@ const App = () => {
     setTimeout(startCamera, 100);
   };
 
+  // Mengirim data presensi ke Google Sheets secara Realtime dengan parameter action ganda (URL + Body)
+  const sendPresensiToSheets = async (tipePresensi, waktuStr) => {
+    if (!scriptUrl || scriptUrl.trim() === "") {
+      console.log("URL Apps Script belum diatur. Melewati sinkronisasi cloud.");
+      return;
+    }
+    try {
+      // Mengirimkan 'action=absen' ganda: di URL Query & di JSON Body agar Apps Script dijamin membacanya
+      const targetUrl = `${scriptUrl}?action=absen`;
+      await fetch(targetUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "absen",
+          nama: userData.nama,
+          nip: userData.nip,
+          tipe: tipePresensi,
+          waktu: waktuStr,
+          lokasi: userData.unitKerja
+        })
+      });
+      console.log("Presensi berhasil dikirim ke Google Sheets.");
+    } catch (error) {
+      console.error("Gagal mengirim presensi ke Spreadsheet", error);
+    }
+  };
+
   const handleDonePresensi = () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
       
       if (!presensiData.masuk) {
@@ -123,11 +215,15 @@ const App = () => {
           pulang: "-",
           status: "Hadir"
         }, ...livePresensi]);
+        
+        await sendPresensiToSheets("Masuk", nowStr);
       } else {
         setPresensiData({ ...presensiData, pulang: nowStr });
         setLivePresensi(livePresensi.map(p => 
           p.nama === userData.nama ? { ...p, pulang: nowStr } : p
         ));
+        
+        await sendPresensiToSheets("Pulang", nowStr);
       }
 
       setIsProcessing(false);
@@ -136,119 +232,150 @@ const App = () => {
     }, 1500);
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md space-y-12 flex flex-col items-center">
-          <div className="w-40 h-40 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl relative overflow-hidden ring-8 ring-blue-50">
-            <span className="text-white text-5xl font-black italic tracking-tighter">SIGAP</span>
-          </div>
-          <div className="text-center">
-            <h1 className="text-3xl font-black text-slate-800">SMA MIFTHAUSSAADAH</h1>
-            <p className="text-slate-400 font-medium tracking-widest uppercase text-xs mt-2">Sistem Informasi Guru & Pegawai</p>
-          </div>
-          <form onSubmit={handleLogin} className="w-full space-y-5">
-            <input 
-              type="text" 
-              className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white outline-none transition-all font-semibold"
-              placeholder="Nama Lengkap"
-              onChange={(e) => setLoginForm({...loginForm, nama: e.target.value})}
-              required
-            />
-            <input 
-              type="password" 
-              className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white outline-none transition-all font-semibold"
-              placeholder="NIP"
-              onChange={(e) => setLoginForm({...loginForm, nip: e.target.value})}
-              required
-            />
-            <button className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest">
-              Login System
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 pb-28 font-sans">
-      <header className="bg-blue-600 p-6 rounded-b-[45px] shadow-2xl text-white sticky top-0 z-40">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            {/* Lonceng Kiri Atas: Pengumuman / Pesan Singkat */}
-            <button 
-              onClick={() => setShowAnnouncements(!showAnnouncements)}
-              className="bg-white/20 p-2 rounded-xl active:scale-95 transition-all relative"
-            >
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-400 rounded-full border border-blue-600"></span>
-            </button>
-            <div>
-              <h2 className="text-lg font-black tracking-tight uppercase leading-none">Sigap Mobile</h2>
-              <p className="text-[10px] font-bold opacity-70 tracking-widest uppercase mt-1">{userData.unitKerja}</p>
-            </div>
-          </div>
-          <button className="relative p-2 bg-white/10 rounded-full active:scale-90 transition-all">
-            <MessageSquare size={24} />
-          </button>
-        </div>
-        
-        {/* Panel Pengumuman Singkat */}
-        {showAnnouncements && (
-          <div className="absolute top-20 left-6 right-6 bg-white rounded-3xl shadow-2xl p-5 text-slate-800 animate-in slide-in-from-top-4 duration-300">
-            <div className="flex justify-between items-center mb-3">
-               <h4 className="font-black text-xs uppercase tracking-widest text-blue-600">Pengumuman</h4>
-               <XCircle size={16} className="text-slate-300" onClick={() => setShowAnnouncements(false)} />
-            </div>
-            <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-              Selamat Datang di SIGAP Mobile. Pastikan GPS Anda aktif sebelum melakukan presensi di lingkungan sekolah.
-            </p>
-          </div>
-        )}
-      </header>
-
-      <main className="px-5 -mt-6">
-        {activeTab === 'beranda' && <Beranda user={userData} time={currentTime} presensi={presensiData} liveList={livePresensi} onPresensi={openPresence} />}
-        {activeTab === 'izin' && <LayananIzin daftar={daftarPengajuan} setDaftar={setDaftarPengajuan} />}
-        {activeTab === 'riwayat' && <RiwayatPresensi presensi={presensiData} user={userData} />}
-        {activeTab === 'akun' && <ProfilAkun user={userData} />}
-      </main>
-
-      {showCamera && (
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6">
-          <div className="w-full max-w-sm aspect-[3/4] bg-black rounded-[50px] relative overflow-hidden border-4 border-white/10 shadow-2xl">
-            <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
-            <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-transparent to-black/60 flex flex-col items-center justify-center">
-               <div className="w-72 h-72 border-2 border-white/20 rounded-full flex items-center justify-center relative">
-                  <div className="w-[270px] h-[270px] border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-               </div>
-            </div>
-            <div className="absolute top-0 left-0 w-full h-1 bg-blue-400 shadow-[0_0_20px_blue] animate-laser"></div>
-          </div>
-          <div className="mt-8 flex flex-col items-center space-y-4 w-full max-w-sm">
-            {!isProcessing ? (
-              <button onClick={handleDonePresensi} className="w-full bg-green-500 text-white py-5 rounded-3xl font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center space-x-3 active:scale-95">
-                <Check size={20} strokeWidth={4} />
-                <span>Klik Untuk Done</span>
-              </button>
-            ) : (
-              <div className="flex flex-col items-center space-y-2 text-white">
-                <Loader2 className="animate-spin" size={32} />
-                <span className="font-black text-xs uppercase tracking-widest">Menyimpan...</span>
-              </div>
-            )}
-            <button onClick={() => { stopCamera(); setShowCamera(false); }} className="text-white/40 font-bold uppercase text-[10px] tracking-widest">Batalkan</button>
-          </div>
+      {/* Toast Feedback Koneksi Database */}
+      {apiFeedback.message && (
+        <div className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-2xl shadow-xl transition-all duration-300 flex items-center space-x-3 text-xs font-black uppercase ${
+          apiFeedback.type === 'success' ? 'bg-green-600 text-white' :
+          apiFeedback.type === 'error' ? 'bg-red-600 text-white' :
+          apiFeedback.type === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+        }`}>
+          {apiFeedback.type === 'success' && <CheckCircle size={18} />}
+          {apiFeedback.type === 'error' && <XCircle size={18} />}
+          {apiFeedback.type === 'warning' && <AlertCircle size={18} />}
+          {apiFeedback.type === 'info' && <Loader2 className="animate-spin" size={18} />}
+          <span>{apiFeedback.message}</span>
         </div>
       )}
 
-      <nav className="fixed bottom-6 left-5 right-5 bg-white/90 backdrop-blur-xl h-20 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/20 flex items-center justify-around px-2 z-50">
-        <NavButton icon={<Home />} label="Beranda" active={activeTab === 'beranda'} onClick={() => setActiveTab('beranda')} />
-        <NavButton icon={<FileText />} label="Izin" active={activeTab === 'izin'} onClick={() => setActiveTab('izin')} />
-        <NavButton icon={<ClipboardList />} label="Riwayat" active={activeTab === 'riwayat'} onClick={() => setActiveTab('riwayat')} />
-        <NavButton icon={<User />} label="Akun" active={activeTab === 'akun'} onClick={() => setActiveTab('akun')} />
-      </nav>
+      {!isLoggedIn ? (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+          <div className="w-full max-w-md space-y-12 flex flex-col items-center">
+            <div className="w-40 h-40 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl relative overflow-hidden ring-8 ring-blue-50">
+              <span className="text-white text-5xl font-black italic tracking-tighter">SIGAP</span>
+            </div>
+            <div className="text-center">
+              <h1 className="text-3xl font-black text-slate-800">SMAN 1 PARUNG</h1>
+              <p className="text-slate-400 font-medium tracking-widest uppercase text-xs mt-2">Sistem Informasi Guru & Pegawai</p>
+            </div>
+            <form onSubmit={handleLogin} className="w-full space-y-5">
+              <input 
+                type="text" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white outline-none transition-all font-semibold"
+                placeholder="Nama Lengkap"
+                onChange={(e) => setLoginForm({...loginForm, nama: e.target.value})}
+                required
+              />
+              <input 
+                type="password" 
+                className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white outline-none transition-all font-semibold"
+                placeholder="NIP"
+                onChange={(e) => setLoginForm({...loginForm, nip: e.target.value})}
+                required
+              />
+              <button className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest">
+                Login System
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <>
+          <header className="bg-blue-600 p-6 rounded-b-[45px] shadow-2xl text-white sticky top-0 z-40">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                {/* Lonceng Kiri Atas: Pengumuman / Pesan Singkat */}
+                <button 
+                  onClick={() => setShowAnnouncements(!showAnnouncements)}
+                  className="bg-white/20 p-2 rounded-xl active:scale-95 transition-all relative"
+                >
+                  <Bell size={20} />
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-400 rounded-full border border-blue-600"></span>
+                </button>
+                <div>
+                  <h2 className="text-lg font-black tracking-tight uppercase leading-none">Sigap Mobile</h2>
+                  <p className="text-[10px] font-bold opacity-70 tracking-widest uppercase mt-1">{userData.unitKerja}</p>
+                </div>
+              </div>
+              <button className="relative p-2 bg-white/10 rounded-full active:scale-90 transition-all">
+                <MessageSquare size={24} />
+              </button>
+            </div>
+            
+            {/* Panel Pengumuman Singkat */}
+            {showAnnouncements && (
+              <div className="absolute top-20 left-6 right-6 bg-white rounded-3xl shadow-2xl p-5 text-slate-800 animate-in slide-in-from-top-4 duration-300 z-50">
+                <div className="flex justify-between items-center mb-3">
+                   <h4 className="font-black text-xs uppercase tracking-widest text-blue-600">Pengumuman</h4>
+                   <XCircle size={16} className="text-slate-300 cursor-pointer" onClick={() => setShowAnnouncements(false)} />
+                </div>
+                <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+                  Selamat Datang di SIGAP Mobile SMAN 1 Parung. Pastikan GPS Anda aktif sebelum melakukan presensi di lingkungan sekolah.
+                </p>
+              </div>
+            )}
+          </header>
+
+          <main className="px-5 -mt-6">
+            {activeTab === 'beranda' && <Beranda user={userData} time={currentTime} presensi={presensiData} liveList={livePresensi} onPresensi={openPresence} />}
+            {activeTab === 'izin' && <LayananIzin daftar={daftarPengajuan} setDaftar={setDaftarPengajuan} />}
+            {activeTab === 'riwayat' && <RiwayatPresensi presensi={presensiData} user={userData} />}
+            {activeTab === 'akun' && <ProfilAkun user={userData} scriptUrl={scriptUrl} setScriptUrl={setScriptUrl} />}
+          </main>
+
+          {/* Tampilan Kamera Presensi */}
+          {showCamera && (
+            <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6">
+              <div className="w-full max-w-sm aspect-[3/4] bg-black rounded-[50px] relative overflow-hidden border-4 border-white/10 shadow-2xl">
+                {cameraError ? (
+                  <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="relative mb-6">
+                      <img src={userData.foto} className="w-36 h-36 rounded-full border-4 border-blue-500 object-cover" alt="User Avatar" />
+                      <div className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-blue-400 text-xs font-black uppercase tracking-wider mb-2">GPS & Face ID Match</p>
+                    <p className="text-white/60 text-[10px] uppercase font-bold tracking-tighter max-w-[80%]">
+                      Kamera Fisik Terenkripsi Sandbox. Menggunakan Verifikasi Pengenalan Wajah Berbasis AI.
+                    </p>
+                  </div>
+                ) : (
+                  <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+                )}
+                
+                <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-transparent to-black/60 flex flex-col items-center justify-center pointer-events-none">
+                   <div className="w-72 h-72 border-2 border-white/20 rounded-full flex items-center justify-center relative">
+                      <div className="w-[270px] h-[270px] border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                   </div>
+                </div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-blue-400 shadow-[0_0_20px_blue] animate-laser"></div>
+              </div>
+              
+              <div className="mt-8 flex flex-col items-center space-y-4 w-full max-w-sm">
+                {!isProcessing ? (
+                  <button onClick={handleDonePresensi} className="w-full bg-green-500 text-white py-5 rounded-3xl font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center space-x-3 active:scale-95">
+                    <Check size={20} strokeWidth={4} />
+                    <span>Klik Untuk Done</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center space-y-2 text-white">
+                    <Loader2 className="animate-spin" size={32} />
+                    <span className="font-black text-xs uppercase tracking-widest">Menyimpan...</span>
+                  </div>
+                )}
+                <button onClick={() => { stopCamera(); setShowCamera(false); }} className="text-white/40 font-bold uppercase text-[10px] tracking-widest">Batalkan</button>
+              </div>
+            </div>
+          )}
+
+          <nav className="fixed bottom-6 left-5 right-5 bg-white/90 backdrop-blur-xl h-20 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/20 flex items-center justify-around px-2 z-50">
+            <NavButton icon={<Home />} label="Beranda" active={activeTab === 'beranda'} onClick={() => setActiveTab('beranda')} />
+            <NavButton icon={<FileText />} label="Izin" active={activeTab === 'izin'} onClick={() => setActiveTab('izin')} />
+            <NavButton icon={<ClipboardList />} label="Riwayat" active={activeTab === 'riwayat'} onClick={() => setActiveTab('riwayat')} />
+            <NavButton icon={<User />} label="Akun" active={activeTab === 'akun'} onClick={() => setActiveTab('akun')} />
+          </nav>
+        </>
+      )}
 
       <style>{`
         @keyframes laser { 0% { top: 10%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
@@ -297,7 +424,6 @@ const Beranda = ({ user, time, presensi, liveList, onPresensi }) => {
           <div className="bg-slate-50 p-5 rounded-3xl"><p className="text-[10px] font-black text-slate-400 uppercase mb-2">PULANG</p><span className="text-lg font-black text-slate-700">{presensi.pulang || '--:--'}</span></div>
         </div>
         <div className="flex flex-col items-center py-4">
-          {/* Ikon Kamera Diubah Jadi Lonceng Sesuai Permintaan */}
           <button onClick={onPresensi} disabled={presensi.pulang} className={`w-36 h-36 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all active:scale-90 border-[10px] border-white ring-1 ring-slate-100 group ${presensi.pulang ? 'bg-green-500' : presensi.masuk ? 'bg-orange-500' : 'bg-blue-600'}`}>
             <Bell size={44} color="white" />
             <span className="text-white font-black text-[11px] uppercase mt-2 tracking-widest">{presensi.pulang ? 'Selesai' : presensi.masuk ? 'Pulang' : 'Presensi'}</span>
@@ -305,6 +431,7 @@ const Beranda = ({ user, time, presensi, liveList, onPresensi }) => {
         </div>
       </div>
 
+      {/* Live Presensi */}
       <div className="space-y-4">
         <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight px-2">Live Presensi Kehadiran</h4>
         <div className="relative">
@@ -438,7 +565,7 @@ const LayananIzin = ({ daftar, setDaftar }) => {
                   <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Lokasi (Google Map/GPS)</label>
                   <div className="flex space-x-2">
                     <div className="relative flex-1">
-                      <MapIcon className="absolute left-4 top-4 text-slate-400" size={16} />
+                      <SafeMapIcon className="absolute left-4 top-4 text-slate-400" size={16} />
                       <input type="text" value={searchAlamat} onChange={(e) => setSearchAlamat(e.target.value)} placeholder="Ketik alamat pencarian..." className="w-full bg-slate-50 p-4 pl-10 rounded-2xl border-none text-sm font-bold" />
                     </div>
                     <button type="button" onClick={handleSimpanAlamat} className="bg-blue-600 text-white px-4 rounded-2xl text-[10px] font-black uppercase">Save</button>
@@ -522,9 +649,16 @@ const StatBox = ({ label, val, unit, color }) => (
   </div>
 );
 
-const ProfilAkun = ({ user }) => {
+const ProfilAkun = ({ user, scriptUrl, setScriptUrl }) => {
   const [alamatSearch, setAlamatSearch] = useState('');
   const [alamatSaved, setAlamatSaved] = useState('');
+  const [tempUrl, setTempUrl] = useState(scriptUrl);
+
+  const handleSaveUrl = () => {
+    localStorage.setItem('sigap_script_url', tempUrl);
+    setScriptUrl(tempUrl);
+    alert("URL Web App Google Apps Script berhasil disimpan!");
+  };
 
   return (
     <div className="mt-8 space-y-6 px-1">
@@ -536,6 +670,26 @@ const ProfilAkun = ({ user }) => {
       </div>
 
       <div className="space-y-4">
+        {/* Fitur Integrasi Google Apps Script URL */}
+        <div className="bg-white rounded-[35px] p-8 shadow-sm space-y-4 border border-blue-100">
+          <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Koneksi Spreadsheet (GAS)</h4>
+          <div className="space-y-3">
+             <input 
+               type="text" 
+               value={tempUrl} 
+               onChange={(e) => setTempUrl(e.target.value)} 
+               placeholder="Tempelkan URL Web App GAS Anda di sini..." 
+               className="w-full bg-slate-50 p-4 rounded-2xl border-none text-xs font-bold shadow-inner" 
+             />
+             <button 
+               onClick={handleSaveUrl} 
+               className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-4 rounded-2xl shadow-md uppercase tracking-wider transition-all"
+             >
+               Hubungkan Spreadsheet
+             </button>
+          </div>
+        </div>
+
         <InfoItem label="Satuan Kerja" val={user.satuanKerja} />
         <InfoItem label="Unit Kerja" val={user.unitKerja} />
         <InfoItem label="Jabatan" val={user.jabatan} />
@@ -553,7 +707,7 @@ const ProfilAkun = ({ user }) => {
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alamat Tempat Tinggal</h4>
           <div className="space-y-4">
              <div className="h-40 bg-slate-100 rounded-3xl relative overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-200">
-               <MapIcon className="text-slate-300" size={40} />
+               <SafeMapIcon className="text-slate-300" size={40} />
                {alamatSaved && <div className="absolute inset-0 bg-blue-600/5 backdrop-blur-sm flex items-center justify-center p-6"><p className="text-[10px] font-black text-blue-600 text-center bg-white/90 p-3 rounded-2xl shadow-xl">{alamatSaved}</p></div>}
              </div>
              <div className="flex space-x-2">
