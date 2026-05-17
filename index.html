@@ -448,6 +448,7 @@
 
       <!-- MENU 4: RIWAYAT & REKAPITULASI PRESENSI -->
       <section id="menu-riwayat" class="flex flex-col gap-6 hidden">
+        <!-- Judul & Rekapitulasi Pokok -->
         <h2 class="text-lg font-bold text-slate-800">Rekapitulasi Presensi</h2>
 
         <!-- Filter Riwayat -->
@@ -552,7 +553,7 @@
           </div>
         </div>
 
-        <!-- Atasan Langsung (Disesuaikan secara dinamis di JS) -->
+        <!-- Atasan Langsung -->
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
           <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Atasan Langsung</h4>
           <div class="flex items-center gap-3">
@@ -630,10 +631,24 @@
   <!-- SCRIPT LOGIKA APLIKASI -->
   <script>
     // Konfigurasi Kunci Geofencing
-    // Koordinat SMA Mifthaussaadah
     const TARGET_LAT = -6.3562831731423195; 
     const TARGET_LNG = 106.5287926364578;
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
+
+    // State dinamis untuk penyimpanan lokal (ketika berjalan di simulator Canvas)
+    let localLivePresensiList = [
+      { 
+        nip: "19820512", 
+        nama: "Dadan Amirulloh, S.Pd.I", 
+        jabatan: "Guru Ahli Madya / Kepala Sekolah", 
+        jamMasuk: "06:22:15", 
+        jamPulang: "", 
+        status: "Hadir", 
+        foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200" 
+      }
+    ];
+
+    let localRincianPresensiMap = {};
 
     // ==========================================
     // LAPISAN PENGAMAN PASIF (SILENT POLYFILL)
@@ -653,8 +668,6 @@
               return this;
             },
             loginUser: function(nip, password) {
-              // Menghubungi spreadsheet rill secara langsung via Google Visualization API (gviz)
-              // agar sinkronisasi nama, jabatan, dan foto 100% akurat dari database spreadsheet milik user.
               const sheetUrl = "https://docs.google.com/spreadsheets/d/1vFXwQAEcnzR70M9fvBbbU8S_JwU0FUT1ad6nbQhVjD4/gviz/tq?sheet=pegawai";
               
               fetch(sheetUrl)
@@ -664,10 +677,8 @@
                     const jsonString = txt.substring(txt.indexOf('{'), txt.lastIndexOf('}') + 1);
                     const responseData = JSON.parse(jsonString);
                     const rows = responseData.table.rows;
-                    
                     let matchedUser = null;
                     
-                    // Loop data baris
                     for (let i = 0; i < rows.length; i++) {
                       const cells = rows[i].c;
                       if (!cells) continue;
@@ -678,12 +689,11 @@
                       const rowJabatan = cells[3] ? String(cells[3].v).trim() : "";
                       const rowFoto = cells[4] ? String(cells[4].v) : "";
                       
-                      // Jika NIP cocok
                       if (rowNip === String(nip).trim()) {
                         if (rowPass === String(password).trim() || rowNip === String(password).trim()) {
                           matchedUser = {
                             nip: rowNip,
-                            nama: rowNama, // Murni dari kolom 3 sheet pegawai
+                            nama: rowNama,
                             jabatan: rowJabatan,
                             foto: rowFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
                           };
@@ -693,12 +703,8 @@
                     }
                     
                     if (matchedUser) {
-                      this._successHandler({
-                        success: true,
-                        user: matchedUser
-                      });
+                      this._successHandler({ success: true, user: matchedUser });
                     } else {
-                      // Fallback menggunakan simulasi presisi jika data tidak publik atau tidak ditemukan
                       fallbackLocalLogin(nip, password);
                     }
                   } catch(e) {
@@ -714,17 +720,7 @@
             },
             getLivePresensi: function(tanggalStr) {
               setTimeout(() => {
-                this._successHandler([
-                  { 
-                    nip: "19820512", 
-                    nama: "Dadan Amirulloh, S.Pd.I", 
-                    jabatan: "Guru Ahli Madya / Kepala Sekolah", 
-                    jamMasuk: "06:22:15", 
-                    jamPulang: "", 
-                    status: "Hadir", 
-                    foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200" 
-                  }
-                ]);
+                this._successHandler(localLivePresensiList);
               }, 200);
             },
             submitPresensi: function(nip, tipe, lat, lng, imageBase64, statusPresensi, detailDL) {
@@ -732,6 +728,54 @@
               const jamStr = String(sekarang.getHours()).padStart(2, '0') + ":" + 
                             String(sekarang.getMinutes()).padStart(2, '0') + ":" + 
                             String(sekarang.getSeconds()).padStart(2, '0');
+              const tglStr = sekarang.toISOString().split('T')[0];
+              
+              // Simulasikan pendaftaran presensi secara lokal di simulator
+              const currentUserData = JSON.parse(sessionStorage.getItem("sigap_user")) || {};
+              const userNama = currentUserData.nama || "User SIGAP";
+              const userJabatan = currentUserData.jabatan || "Pendidik";
+              const userFoto = currentUserData.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200";
+
+              if (tipe === "masuk") {
+                // Tambahkan atau perbarui list kehadiran hari ini
+                const existing = localLivePresensiList.find(p => p.nip === nip);
+                if (!existing) {
+                  localLivePresensiList.push({
+                    nip: nip,
+                    nama: userNama,
+                    jabatan: userJabatan,
+                    jamMasuk: jamStr,
+                    jamPulang: "",
+                    status: "Hadir",
+                    foto: userFoto
+                  });
+                }
+                
+                // Tambahkan ke map rekapitulasi harian rincian
+                localRincianPresensiMap[tglStr] = {
+                  tanggal: tglStr,
+                  masuk: jamStr,
+                  pulang: "",
+                  status: "Hadir"
+                };
+              } else if (tipe === "pulang") {
+                const existing = localLivePresensiList.find(p => p.nip === nip);
+                if (existing) {
+                  existing.jamPulang = jamStr;
+                }
+                
+                if (localRincianPresensiMap[tglStr]) {
+                  localRincianPresensiMap[tglStr].pulang = jamStr;
+                } else {
+                  localRincianPresensiMap[tglStr] = {
+                    tanggal: tglStr,
+                    masuk: "",
+                    pulang: jamStr,
+                    status: "Hadir"
+                  };
+                }
+              }
+
               setTimeout(() => {
                 this._successHandler({
                   success: true,
@@ -765,13 +809,31 @@
               }, 300);
             },
             getRekapPresensi: function(nip, bulan, tahun) {
+              // Hasilkan rincian secara dinamis dengan mengikutsertakan input presensi terbaru
+              const sekarang = new Date();
+              const formatBulan = String(sekarang.getMonth() + 1).padStart(2, '0');
+              const formatTahun = sekarang.getFullYear();
+              const tglHariIniStr = sekarang.toISOString().split('T')[0];
+
+              const defaultRincian = [
+                { tanggal: `${formatTahun}-${formatBulan}-15`, masuk: "06:21:40", pulang: "15:02:11", status: "Hadir" }
+              ];
+
+              // Cari apakah ada presensi hari ini di map lokal
+              if (localRincianPresensiMap[tglHariIniStr]) {
+                const existingIndex = defaultRincian.findIndex(r => r.tanggal === tglHariIniStr);
+                if (existingIndex === -1) {
+                  defaultRincian.unshift(localRincianPresensiMap[tglHariIniStr]);
+                } else {
+                  defaultRincian[existingIndex] = localRincianPresensiMap[tglHariIniStr];
+                }
+              }
+
               setTimeout(() => {
                 this._successHandler({
                   success: true,
                   rekap: { alfa: 0, telat: 12, tap: 0, cuti: 0, izin: 1, dl: 1, wfh: 0 },
-                  rincian: [
-                    { tanggal: "2026-05-15", masuk: "06:21:40", pulang: "15:02:11", status: "Hadir" }
-                  ]
+                  rincian: defaultRincian
                 });
               }, 300);
             },
@@ -793,7 +855,6 @@
         }
       };
 
-      // Fungsi fallback login lokal jika gagal mengambil database secara langsung
       function fallbackLocalLogin(nip, password) {
         const simulatedTeachers = {
           "19820512": { nama: "Dadan Amirulloh, S.Pd.I", jabatan: "Guru Ahli Madya / Kepala Sekolah", foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200" },
@@ -1068,10 +1129,10 @@
       // Reset menu ke Beranda
       switchMenu('beranda');
       
-      // Ambil live presensi
+      // Ambil live presensi harian secara global
       loadLiveKehadiran();
       
-      // Inisialisasi Google Apps Script data binding lainnya
+      // Inisialisasi status presensi mandiri guru
       loadStatusPresensiHariIni();
     }
 
@@ -1111,7 +1172,7 @@
       // 1. Validasi Jarak Geofencing (100 Meter)
       if (currentGeoLocation.distance === null) {
         showLocationWarning();
-        showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda and berikan izin akses lokasi pada perangkat agar dapat melakukan presensi.", false);
+        showModal("Lokasi Bermasalah", "Harap aktifkan GPS Anda dan berikan izin akses lokasi pada perangkat agar dapat melakukan presensi.", false);
         return;
       }
 
@@ -1197,8 +1258,15 @@
               document.getElementById("jam-pulang-realtime").innerText = response.jam;
             }
 
-            // Reload Live Kehadiran
+            // ====== REAL-TIME UPDATE TRIGGER ======
+            // 1. Perbarui daftar Live Kehadiran hari ini agar nama langsung muncul di Beranda bawah
             loadLiveKehadiran();
+
+            // 2. Perbarui rekapitulasi / rincian harian guru jika sedang membuka tab riwayat
+            const riwayatSection = document.getElementById("menu-riwayat");
+            if (riwayatSection && !riwayatSection.classList.contains("hidden")) {
+              loadRekapitulasi();
+            }
           } else {
             showModal("Gagal Presensi", response.message, false);
           }
@@ -1216,7 +1284,6 @@
       
       google.script.run
         .withSuccessHandler((response) => {
-          // Melindungi logika dari response kosong atau bukan bertipe array
           if (!response || !Array.isArray(response)) {
             return;
           }
@@ -1505,7 +1572,6 @@
     }
 
     // IZIN PERSONAL: AJUKAN & RENDER DATA
-    // Menampilkan form pengajuan izin personal
     function bukaFormIzin(show) {
       const form = document.getElementById("form-pengajuan-izin");
       if (show) form.classList.remove("hidden");
