@@ -66,7 +66,7 @@
     </div>
   </div>
 
-  <!-- MODAL CUSTOM UNTUK NOTIFIKASI (MENGGANTIKAN BROWSER ALERT) -->
+  <!-- MODAL CUSTOM UNTUK NOTIFIKASI -->
   <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden px-4">
     <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl transform scale-95 transition-all">
       <div class="flex flex-col items-center text-center gap-4">
@@ -628,6 +628,15 @@
     const TARGET_LNG = 106.5287926364578;
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
 
+    // Daftar Hari Libur Nasional / Tanggal Merah (Contoh)
+    const TANGGAL_MERAH = [
+      "2026-01-01", // Tahun Baru
+      "2026-05-01", // Hari Buruh
+      "2026-05-25", // Hari Raya Idul Adha
+      "2026-08-17", // Hari Kemerdekaan
+      "2026-12-25"  // Hari Natal
+    ];
+
     // State dinamis untuk penyimpanan lokal (ketika berjalan di simulator Canvas)
     let localLivePresensiList = [];
     let localRincianPresensiMap = {};
@@ -661,6 +670,7 @@
               return this;
             },
             loginUser: function(nip, password) {
+              // Menghubungi spreadsheet rill secara langsung via Google Visualization API (gviz)
               const sheetUrl = "https://docs.google.com/spreadsheets/d/1vFXwQAEcnzR70M9fvBbbU8S_JwU0FUT1ad6nbQhVjD4/gviz/tq?sheet=pegawai";
               
               fetch(sheetUrl)
@@ -804,17 +814,34 @@
               const formatTahun = sekarang.getFullYear();
               const tglHariIniStr = getWIBDateString();
 
-              const defaultRincian = [
-                { tanggal: `${formatTahun}-${formatBulan}-15`, masuk: "06:21:40", pulang: "15:02:11", status: "Hadir" }
-              ];
+              const defaultRincian = [];
+              const jmlHari = new Date(tahun, bulan, 0).getDate();
 
-              if (localRincianPresensiMap[tglHariIniStr]) {
-                const existingIndex = defaultRincian.findIndex(r => r.tanggal === tglHariIniStr);
-                if (existingIndex === -1) {
-                  defaultRincian.unshift(localRincianPresensiMap[tglHariIniStr]);
-                } else {
-                  defaultRincian[existingIndex] = localRincianPresensiMap[tglHariIniStr];
+              for (let d = 1; d <= jmlHari; d++) {
+                const tempDate = new Date(tahun, bulan - 1, d);
+                const dayOfWeek = tempDate.getDay();
+                const formatTgl = `${tahun}-${String(bulan).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                
+                let status = "Alfa";
+                let masuk = "";
+                let pulang = "";
+                
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                  status = "off";
+                } else if (TANGGAL_MERAH.includes(formatTgl)) {
+                  status = "libur";
+                } else if (localRincianPresensiMap[formatTgl]) {
+                  masuk = localRincianPresensiMap[formatTgl].masuk;
+                  pulang = localRincianPresensiMap[formatTgl].pulang;
+                  status = localRincianPresensiMap[formatTgl].status;
                 }
+
+                defaultRincian.push({
+                  tanggal: formatTgl,
+                  masuk: masuk,
+                  pulang: pulang,
+                  status: status
+                });
               }
 
               setTimeout(() => {
@@ -1025,7 +1052,7 @@
 
       const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
                 Math.cos(phi1) * Math.cos(phi2) *
-                String(Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2));
+                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
       return R * c; 
@@ -1351,6 +1378,7 @@
         .getLivePresensi(hariIniStr);
     }
 
+    // Menampilkan seluruh guru yang sudah presensi hari ini secara detail
     function renderLiveList(list) {
       const listContainer = document.getElementById("live-list-pegawai");
       listContainer.innerHTML = "";
@@ -1361,20 +1389,28 @@
       }
 
       list.forEach(p => {
+        let statusText = p.status || 'Hadir';
         let statusColor = "bg-emerald-100 text-emerald-800";
-        if (p.status === "Terlambat") statusColor = "bg-amber-100 text-amber-800";
-        else if (p.status === "Alfa") statusColor = "bg-rose-100 text-rose-800";
-        else if (p.status && p.status.includes("Izin")) statusColor = "bg-blue-100 text-blue-800";
+        
+        if (statusText === "Terlambat") {
+          statusColor = "bg-amber-100 text-amber-800";
+        } else if (statusText === "Alfa" || statusText === "libur" || statusText === "Libur") {
+          statusColor = "bg-rose-100 text-rose-800";
+        } else if (statusText === "off" || statusText === "Off") {
+          statusColor = "bg-slate-100 text-slate-800";
+        } else if (statusText && statusText.includes("Izin")) {
+          statusColor = "bg-blue-100 text-blue-800";
+        }
 
         const card = `
           <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <img src="${p.foto}" alt="${p.nama}" class="w-10 h-10 rounded-lg object-cover">
+            <img src="${p.foto}" alt="${p.nama}" class="w-10 h-10 rounded-lg object-cover shadow-sm">
             <div class="flex-1">
               <h4 class="text-xs font-bold text-slate-800 leading-tight">${p.nama}</h4>
               <p class="text-[10px] text-slate-400 font-semibold">${p.jabatan}</p>
             </div>
             <div class="text-right">
-              <span class="text-[8px] font-bold px-2 py-0.5 rounded ${statusColor} uppercase">${p.status || 'Hadir'}</span>
+              <span class="text-[8px] font-bold px-2 py-0.5 rounded ${statusColor} uppercase">${statusText}</span>
               <div class="text-[9px] text-slate-500 mt-1">
                 <span>M: <strong class="text-slate-700">${p.jamMasuk || '-'}</strong></span>
                 <span class="ml-1.5">P: <strong class="text-slate-700">${p.jamPulang || '-'}</strong></span>
@@ -1719,6 +1755,9 @@
                 if (row.status === "off") {
                   statusText = "OFF/WEEKEND";
                   statusStyle = "bg-slate-100 text-slate-400";
+                } else if (row.status === "libur") {
+                  statusText = "LIBUR/TGL MERAH";
+                  statusStyle = "bg-rose-100 text-rose-800 font-semibold";
                 } else if (row.status === "Alfa") {
                   statusStyle = "bg-rose-100 text-rose-800 font-semibold";
                 } else if (row.status === "Terlambat") {
