@@ -223,7 +223,7 @@
           </div>
         </div>
 
-        <!-- CAMERA INTERACTIVE WIDGET (DITAMBAHKAN KEMBALI) -->
+        <!-- CAMERA INTERACTIVE WIDGET -->
         <div id="camera-widget" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hidden flex-col items-center">
           <h3 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera mr-1 text-emerald-600"></i> Ambil Foto Kehadiran</h3>
           <div class="w-full max-w-sm aspect-video bg-slate-900 rounded-xl overflow-hidden relative mb-4">
@@ -294,7 +294,7 @@
               <label class="block text-xs font-bold text-slate-600 mb-1.5">Lokasi Dinas Luar (Peta)</label>
               <div class="flex gap-2 mb-2">
                 <input type="text" id="dl-search-lokasi" class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Ketikkan alamat lengkap lokasi...">
-                <button type="button" onclick="cariLokasiPeta('dl')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
+                <button type="button" onclick="cariLocationsPeta('dl')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
               </div>
               <div id="dl-map" class="w-full h-44 rounded-xl border border-slate-200 bg-slate-100 z-10"></div>
               <p class="text-[10px] text-slate-400 mt-1">Klik di peta untuk menandai titik, lalu klik "Simpan Koordinat".</p>
@@ -578,7 +578,7 @@
           <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-2">Alamat Tempat Tinggal</h4>
           <div class="flex gap-2">
             <input type="text" id="akun-search-alamat" class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Cari alamat lengkap tempat tinggal...">
-            <button onclick="cariLokasiPeta('akun')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
+            <button onclick="cariLocationsPeta('akun')" class="px-4 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-colors">Cari</button>
           </div>
           <div id="akun-map" class="w-full h-44 rounded-xl border border-slate-200 bg-slate-100 z-10"></div>
           <div class="flex gap-2 mt-1">
@@ -637,7 +637,7 @@
   <!-- SCRIPT LOGIKA APLIKASI -->
   <script>
     // Konfigurasi Kunci Geofencing
-    const TARGET_LAT = -6.3562831731423195; 
+    const TARGET_LAT = 106.5287926364578; 
     const TARGET_LNG = 106.5287926364578;
     const MAX_RADIUS_METER = 100; // Dikunci 100 Meter
 
